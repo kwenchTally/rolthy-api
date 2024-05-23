@@ -7,7 +7,7 @@ const {
   addDocument,
   updateDocument,
   deleteDocument,
-} = require("../controllers/Documents");
+} = require("../controllers/documents");
 
 router.route("/").post(getAllDocument);
 router.route("/add").post(addDocument);
