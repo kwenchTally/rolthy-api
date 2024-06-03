@@ -18,6 +18,9 @@ app.use(bodyParser.json());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// app.use(express.mul({ extended: true }));
+// Views in public directory
+app.use(express.static("public"));
 
 const customers_routes = require("./routes/customers");
 const drivers_routes = require("./routes/drivers");
@@ -40,7 +43,7 @@ const ratingmarketplaces_routes = require("./routes/ratingmarketplaces");
 const ratingproducts_routes = require("./routes/ratingproducts");
 const notifications_routes = require("./routes/notifications");
 
-const stripe_routes = require("./routes/stripepayment");
+// const stripe_routes = require("./routes/stripepayment");
 const square_routes = require("./routes/squarepayment");
 const sendgrid_routes = require("./routes/sendgrid");
 const fcm_routes = require("./routes/fcm");
@@ -68,7 +71,7 @@ app.use("/api/rating/marketplaces", ratingmarketplaces_routes);
 app.use("/api/rating/products", ratingproducts_routes);
 app.use("/api/notifications", notifications_routes);
 
-app.use("/api/payment", stripe_routes);
+// app.use("/api/payment", stripe_routes);
 app.use("/api/payment/v1", square_routes);
 app.use("/api/send", sendgrid_routes);
 app.use("/api/notify", fcm_routes);
@@ -89,5 +92,5 @@ const start = async () => {
   }
 };
 
-start();
-// runCluster(start);
+// start();
+runCluster(start);

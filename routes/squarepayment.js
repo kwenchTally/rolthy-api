@@ -12,6 +12,16 @@ const {
   createCard,
 
   verifyBuyer,
+
+  getItems,
+  getPlans,
+  getSubscriptions,
+
+  createPlan,
+  createItem,
+  createSubscription,
+
+  getTransactions,
 } = require("../controllers/square");
 
 router.route("/locations").post(getLocations);
@@ -22,5 +32,15 @@ router.route("/customer/create").post(createCustomer);
 router.route("/cards").post(getCards);
 router.route("/card/create").post(createCard);
 router.route("/card/verify").post(verifyBuyer);
+
+router.route("/items").post(getItems);
+router.route("/plans").post(getPlans);
+router.route("/subscriptions").post(getSubscriptions);
+
+router.route("/create/item").post(createItem);
+router.route("/create/plan").post(createPlan);
+router.route("/create/subscription").post(createSubscription);
+
+router.route("/transactions").post(getTransactions);
 
 module.exports = router;
