@@ -53,15 +53,15 @@ const generateOtp = async (req, res) => {
       if (req.body.email != null) {
         const sendOTPData = {
           to: [req.body.email],
-          subject: "ROLTHY-OTP",
-          text: `Dear User, Your OTP verification code for Rolthy App is ${num}. Please, Do not share it with other.`,
+          subject: `${process.env.APP_NAME.toUpperCase()}-OTP`,
+          text: `Dear User, Your OTP verification code for ${process.env.APP_NAME} App is ${num}. Please, Do not share it with other.`,
         };
         await mailTo(sendOTPData);
       } else {
         const sendOTPData = {
           to: [req.body.mobile],
-          subject: "ROLTHY-OTP",
-          text: `Dear User, Your OTP verification code for Rolthy App is ${num}. Please, Do not share it with other.`,
+          subject: `${process.env.APP_NAME.toUpperCase()}-OTP`,
+          text: `Dear User, Your OTP verification code for ${process.env.APP_NAME} App is ${num}. Please, Do not share it with other.`,
         };
         //   await smsTo(sendOTPData);
       }
@@ -73,6 +73,7 @@ const generateOtp = async (req, res) => {
     }
     res.status(200).json(otpdata);
   } catch (e) {
+    console.log(e);
     res.status(400).json(getErrorFromCatch(e));
   }
 };

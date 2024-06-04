@@ -71,7 +71,7 @@ const addPayment = async (req, res) => {
     if (req.body.customer != undefined) {
       const res1 = await Customer.find({ _id: req.body.customer });
       const data = {
-        title: "Rolthy purchase",
+        title: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
         body: `Your ${req.body.keyword} has been placed successfully. Thank you for ${req.body.keyword}.`,
         image: "",
         token: res1[0].token,
@@ -105,7 +105,7 @@ const SendPurchaseNotification = async (result, customer) => {
     const msg = `Dear ${customerName}, Thank you for the purchase. Your ${orderType} ref. ${orderId} with payment ref. ${paymentId} is confirmed for the amount $${amount}.`;
     const sendPurchaseEmailData = {
       to: [customerEmail],
-      subject: "ROLTHY-PURCHASE",
+      subject: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
       text: msg,
     };
     await mailTo(sendPurchaseEmailData);
