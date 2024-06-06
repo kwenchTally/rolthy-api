@@ -137,8 +137,22 @@ addNotification = async (data) => {
 };
 
 // FCM API (HTTP v1)
+const fs = require("fs");
 const admin = require("firebase-admin");
-const serviceAccount = require("../rolthy-delivery-firebase-adminsdk-4onnt-ee4bcdbef2.json");
+// const serviceAccount = require("../rolthy-delivery-firebase-adminsdk-4onnt-ee4bcdbef2.json");
+
+// Decode the Base64 encoded JSON content
+const serviceAccountJson = Buffer.from(
+  process.env.FCM_SERVICE_CREDS,
+  "base64"
+).toString("utf8");
+
+// Write the decoded content to a temporary file
+// const serviceAccountPath = "./tmp/service-account-file.json";
+// fs.writeFileSync(serviceAccountPath, serviceAccount);
+
+// Parse the JSON content
+const serviceAccount = JSON.parse(serviceAccountJson);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
