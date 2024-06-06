@@ -4,7 +4,7 @@ const Payment = require("../models/payment");
 const Customer = require("../models/customer");
 const Subscription = require("../models/subscription");
 const { mailTo } = require("../controllers/sendgrid");
-const { addNotification } = require("../controllers/fcm");
+const { addNotification, addNotification1 } = require("../controllers/fcm");
 
 const addPayment = async (req, res) => {
   try {
@@ -68,15 +68,20 @@ const addPayment = async (req, res) => {
       result = await cObj.save();
     }
 
-    if (req.body.customer != undefined) {
-      const res1 = await Customer.find({ _id: req.body.customer });
-      const data = {
-        title: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
-        body: `Your ${req.body.keyword} has been placed successfully. Thank you for ${req.body.keyword}.`,
-        image: "",
-        token: res1[0].token,
-      };
-      await addNotification(data);
+    try {
+      if (req.body.customer != undefined) {
+        const res1 = await Customer.find({ _id: req.body.customer });
+        const data = {
+          title: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
+          body: `Your ${req.body.keyword} has been placed successfully. Thank you for ${req.body.keyword}.`,
+          image: "",
+          token: res1[0].token,
+        };
+        await addNotification1(data);
+      }
+    } catch (e) {
+      console.log("Error Notification:");
+      console.log(e);
     }
 
     res.status(200).json(result);

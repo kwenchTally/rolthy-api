@@ -54,9 +54,7 @@ router.post("/customer", (req, res, next) => {
       return res.status(400).send({ message: err.message });
     } else if (err) {
       console.log(err);
-      return res
-        .status(500)
-        .send({ message: "An error occurred during upload." });
+      return res.status(400).send({ message: err.message });
     }
     uploadBucket(req, res);
   });
@@ -68,9 +66,7 @@ router.post("/driver", (req, res, next) => {
       return res.status(400).send({ message: err.message });
     } else if (err) {
       console.log(err);
-      return res
-        .status(500)
-        .send({ message: "An error occurred during upload." });
+      return res.status(400).send({ message: err.message });
     }
     uploadBucket(req, res);
   });
@@ -82,9 +78,7 @@ router.post("/marketplace", (req, res, next) => {
       return res.status(400).send({ message: err.message });
     } else if (err) {
       console.log(err);
-      return res
-        .status(500)
-        .send({ message: "An error occurred during upload." });
+      return res.status(400).send({ message: err.message });
     }
     uploadBucket(req, res);
   });
@@ -96,9 +90,7 @@ router.post("/product", (req, res, next) => {
       return res.status(400).send({ message: err.message });
     } else if (err) {
       console.log(err);
-      return res
-        .status(500)
-        .send({ message: "An error occurred during upload." });
+      return res.status(400).send({ message: err.message });
     }
     uploadBucket(req, res);
   });
@@ -110,9 +102,7 @@ router.post("/document", (req, res, next) => {
       return res.status(400).send({ message: err.message });
     } else if (err) {
       console.log(err);
-      return res
-        .status(500)
-        .send({ message: "An error occurred during upload." });
+      return res.status(400).send({ message: err.message });
     }
     uploadBucket(req, res);
   });

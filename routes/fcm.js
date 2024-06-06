@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 
-const { sendNotification } = require("../controllers/fcm");
+const { sendNotification, sendNotification1 } = require("../controllers/fcm");
 
-router.route("/").post(sendNotification);
+router.route("/").post(sendNotification1);
 
 module.exports = router;
