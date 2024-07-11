@@ -2,6 +2,19 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
+const cors = require('cors');
+app.use(
+  cors({
+    // origin: 'https://adminpanel.neshallweb.com', // Allow only this origin
+    // methods: 'GET,HEAD,PUT,PATCH,POST,DELETE'
+}));
+
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', 'https://adminpanel.neshallweb.com');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  // res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.send();
+});
 
 PORT = process.env.PORT || 3000;
 DB_URI = process.env.DB_URI || "";
