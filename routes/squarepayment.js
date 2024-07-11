@@ -22,6 +22,7 @@ const {
   createSubscription,
 
   getTransactions,
+  generatePaymentCard,
 } = require("../controllers/square");
 
 router.route("/locations").post(getLocations);
@@ -42,5 +43,7 @@ router.route("/create/plan").post(createPlan);
 router.route("/create/subscription").post(createSubscription);
 
 router.route("/transactions").post(getTransactions);
+// router.route("/generate-payment").post(generatePaymentCard);
+router.route("/generate-payment").get(generatePaymentCard);
 
 module.exports = router;

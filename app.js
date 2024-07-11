@@ -3,6 +3,29 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
 
+const cors = require("cors");
+const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",");
+app.use(cors());
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+  res.header("Access-Control-Allow-Methods", "GET, POST");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  next();
+});
+
+app.options("*", (req, res) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+  res.header("Access-Control-Allow-Methods", "GET, POST");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.send();
+});
+
 PORT = process.env.PORT || 3000;
 DB_URI = process.env.DB_URI || "";
 
@@ -42,6 +65,7 @@ const ratingdrivers_routes = require("./routes/ratingdrivers");
 const ratingmarketplaces_routes = require("./routes/ratingmarketplaces");
 const ratingproducts_routes = require("./routes/ratingproducts");
 const notifications_routes = require("./routes/notifications");
+const deliveries_routes = require("./routes/deliveries");
 
 // const stripe_routes = require("./routes/stripepayment");
 const square_routes = require("./routes/squarepayment");
@@ -70,6 +94,7 @@ app.use("/api/rating/drivers", ratingdrivers_routes);
 app.use("/api/rating/marketplaces", ratingmarketplaces_routes);
 app.use("/api/rating/products", ratingproducts_routes);
 app.use("/api/notifications", notifications_routes);
+app.use("/api/deliveries", deliveries_routes);
 
 // app.use("/api/payment", stripe_routes);
 app.use("/api/payment/v1", square_routes);
@@ -79,6 +104,13 @@ app.use("/api/map", googlemap_routes);
 
 app.get("/", (req, res) => {
   res.send("Server Running...");
+});
+
+app.get("/api/check-cors", (req, res) => {
+  res.json({ status: "Success", message: "Ok, Hello From CORS!" });
+});
+app.post("/api/check-cors", (req, res) => {
+  res.json({ status: "Success", message: "Ok, Hello From CORS!" });
 });
 
 const start = async () => {
