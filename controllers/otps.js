@@ -4,7 +4,7 @@ const {
   decodeString,
 } = require("../helper/functions");
 const Otp = require("../models/otp");
-const { mailTo } = require("../controllers/sendgrid");
+const { mailTo, smsTo } = require("../controllers/sendgrid");
 
 const randomNumberInRange = (min, max) => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -63,7 +63,7 @@ const generateOtp = async (req, res) => {
           subject: `${process.env.APP_NAME.toUpperCase()}-OTP`,
           text: `Dear User, Your OTP verification code for ${process.env.APP_NAME} App is ${num}. Please, Do not share it with other.`,
         };
-        //   await smsTo(sendOTPData);
+        await smsTo(sendOTPData);
       }
     } else {
       otpdata = {

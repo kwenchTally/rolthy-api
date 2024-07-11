@@ -155,6 +155,50 @@ sendSMS = async (req, res) => {
   }
 };
 
+smsTo = async (body) => {
+  try {
+    const { subject, text, to } = body;
+
+    if (text == undefined || text == "" || to == undefined || to == "") {
+      res.status(200).json({
+        status: "error",
+        message: "subject, message and phone is required!",
+      });
+      return;
+    }
+
+    const message = {
+      from: process.env.APP_MOBILE || "",
+      to: to,
+      // body: text,
+      body: subject + "\n" + text,
+    };
+
+    client.messages
+      .create(message)
+      .then((response) => {
+        console.log("SMS sent...");
+        return {
+          status: "success",
+          message: "sms sent",
+        };
+      })
+      .catch((error) => {
+        console.log(error.message);
+        return {
+          status: "failed",
+          message: "err",
+        };
+      });
+  } catch (e) {
+    console.log(`mail sending error ${e}`);
+    return {
+      status: "failed",
+      message: "err",
+    };
+  }
+};
+
 verifyTwilio = async () => {
   const accountSid = process.env.TWILIO_SMS_SID;
   const authToken = process.env.TWILIO_SMS_TOKEN;
@@ -172,4 +216,5 @@ module.exports = {
   sendSMS,
 
   mailTo,
+  smsTo,
 };

@@ -582,6 +582,40 @@ payNow = async (req, res) => {
   }
 };
 
+generatePayment = async () => {
+  const payments = Square.payments(sourceId, locationId);
+  const cardOptions = {
+    style: {
+      input: {
+        backgroundColor: "white",
+      },
+    },
+  };
+  try {
+    const card = await payments.card(cardOptions);
+    await card.attach("#card");
+    const payButton = document.getElementById("pay");
+    payButton.addEventListener("click", async () => {
+      const result = await card.tokenize();
+      alert(JSON.stringify(result, null, 2));
+    });
+  } catch (e) {
+    console.log(e);
+  }
+};
+generatePaymentCard = async (req, res) => {
+  res.render(
+    // "payment",
+    "paynow",
+    {
+      title: "Order Payment",
+      message: "",
+      sourceId: sourceId,
+      locationId: locationId,
+    }
+  );
+};
+
 module.exports = {
   getLocations,
   getPayments,
@@ -605,4 +639,5 @@ module.exports = {
   createSubscription,
 
   getTransactions,
+  generatePaymentCard,
 };
