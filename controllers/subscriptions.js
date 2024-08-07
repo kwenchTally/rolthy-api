@@ -92,6 +92,7 @@ const getAllSubscription = async (req, res) => {
   try {
     const { sort, select } = req.query;
     const {
+      id,
       customer,
       marketplace,
       driver,
@@ -104,6 +105,10 @@ const getAllSubscription = async (req, res) => {
       deleted,
     } = req.body;
     const queryObject = {};
+
+    if (id) {
+      queryObject._id = { $eq: id };
+    }
 
     if (customer) {
       queryObject.customer = { $eq: customer };

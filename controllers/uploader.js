@@ -264,6 +264,29 @@ const upload_document = multer({
   },
 }).array("file", 10);
 
+const upload_delivery = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: bucketName + ".deliveries",
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    acl: "public-read",
+    metadata: function (req, file, cb) {
+      cb(null, { fieldName: file.fieldname });
+    },
+    key: function (req, file, cb) {
+      cb(null, Date.now().toString() + path.extname(file.originalname));
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type, only images are allowed!"), false);
+    }
+  },
+}).array("file", 1);
+
 const fetch = require("node-fetch");
 const sharp = require("sharp");
 
@@ -314,5 +337,6 @@ module.exports = {
   upload_marketplace,
   upload_product,
   upload_document,
+  upload_delivery,
   viewBucket,
 };

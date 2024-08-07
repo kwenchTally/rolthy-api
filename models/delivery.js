@@ -7,6 +7,7 @@ const deliverySchema = new mongoose.Schema({
       id: "",
       name: "",
       mobile: "",
+      email: "",
       address: "",
     },
   },
@@ -16,6 +17,7 @@ const deliverySchema = new mongoose.Schema({
       id: "",
       name: "",
       mobile: "",
+      email: "",
       address: "",
     },
   },
@@ -25,6 +27,7 @@ const deliverySchema = new mongoose.Schema({
       id: "",
       name: "",
       mobile: "",
+      email: "",
       address: "",
     },
   },
@@ -32,7 +35,44 @@ const deliverySchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  order_id: {
+  // order_id: {
+  //   type: String,
+  //   default: "",
+  // },
+  order: {
+    type: Map,
+    default: {
+      id: "",
+      mode: "",
+      option: "",
+      charge: 0.0,
+    },
+  },
+  item: {
+    type: Map,
+    default: {
+      id: "",
+      name: "",
+      category: "",
+      company: "",
+    },
+  },
+  subscription: {
+    type: Map,
+    default: null,
+  },
+  keyword: {
+    type: String,
+    default: "",
+  },
+  requests: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "drivers",
+      default: [],
+    },
+  ],
+  assigned: {
     type: String,
     default: "",
   },

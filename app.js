@@ -34,6 +34,9 @@ const { runCluster } = require("./controllers/clusters");
 
 const path = require("path");
 
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, "public")));
+
 app.set("view engine", "ejs");
 app.set("views", path.resolve("./views"));
 app.use(express.urlencoded({ extended: false }));
@@ -66,6 +69,7 @@ const ratingmarketplaces_routes = require("./routes/ratingmarketplaces");
 const ratingproducts_routes = require("./routes/ratingproducts");
 const notifications_routes = require("./routes/notifications");
 const deliveries_routes = require("./routes/deliveries");
+const preferences_routes = require("./routes/preferences");
 
 // const stripe_routes = require("./routes/stripepayment");
 const square_routes = require("./routes/squarepayment");
@@ -95,11 +99,12 @@ app.use("/api/rating/marketplaces", ratingmarketplaces_routes);
 app.use("/api/rating/products", ratingproducts_routes);
 app.use("/api/notifications", notifications_routes);
 app.use("/api/deliveries", deliveries_routes);
+app.use("/api/preferences", preferences_routes);
 
 // app.use("/api/payment", stripe_routes);
-app.use("/api/payment/v1", square_routes);
+app.use("/api/payment", square_routes);
 app.use("/api/send", sendgrid_routes);
-app.use("/api/notify", fcm_routes);
+app.use("/api/fcm", fcm_routes);
 app.use("/api/map", googlemap_routes);
 
 app.get("/", (req, res) => {

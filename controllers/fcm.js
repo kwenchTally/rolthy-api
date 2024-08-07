@@ -137,19 +137,13 @@ addNotification = async (data) => {
 };
 
 // FCM API (HTTP v1)
-const fs = require("fs");
 const admin = require("firebase-admin");
-// const serviceAccount = require("../rolthy-delivery-firebase-adminsdk-4onnt-ee4bcdbef2.json");
 
 // Decode the Base64 encoded JSON content
 const serviceAccountJson = Buffer.from(
   process.env.FCM_SERVICE_CREDS,
   "base64"
 ).toString("utf8");
-
-// Write the decoded content to a temporary file
-// const serviceAccountPath = "./tmp/service-account-file.json";
-// fs.writeFileSync(serviceAccountPath, serviceAccount);
 
 // Parse the JSON content
 const serviceAccount = JSON.parse(serviceAccountJson);
@@ -179,89 +173,84 @@ const addNotification1 = async (data) => {
 
 sendNotification1 = async (req, res) => {
   try {
-    const { user, message, topic } = req.body;
-    const fcm = new FCM(serverKey);
+    const { user, topic, token, title, body, image } = req.body;
 
-    if (topic != undefined) {
-      const topics = [
-        "general",
-        "promotions",
-        "offers",
-        "marketing",
-        "advertisement",
-      ];
-      const topic = topics[0];
-
-      const message = {
-        data: {
-          title: req.body.title,
-          body: req.body.body,
-          image: req.body.image,
-        },
-        topic: topic,
-      };
-
-      const response = await admin.messaging().send(message);
-      console.log("Successfully sent message:", response);
-    } else if (user != undefined) {
-      //all
-
-      const registrationTokens = [req.body.token];
-      const message = {
-        data: {
-          title: req.body.title,
-          body: req.body.body,
-          image: req.body.image,
-        },
-        tokens: registrationTokens,
-      };
-
-      const response = await admin.messaging().sendEachForMulticast(message);
-      console.log("Successfully sent message:", response);
-      console.log(response.successCount + " messages were sent successfully");
-      if (response.failureCount > 0) {
-        const failedTokens = [];
-        response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
-            failedTokens.push(registrationTokens[idx]);
-          }
-        });
-        console.log("List of tokens that caused failures: " + failedTokens);
-      }
-    } else {
-      //user
-      const token = req.body.token;
-      const message = {
-        data: {
-          title: req.body.title,
-          body: req.body.body,
-          image: req.body.image,
-        },
-        token: token,
-      };
-
-      const response = await admin.messaging().send(message);
-      console.log("Successfully sent message:", response);
-    }
-    const msg = {
-      content_available: true,
-      mutable_content: true,
+    let message;
+    message = {
       notification: {
-        body: message,
-        icon: "icon",
-        sound: "sound",
+        title: title,
+        body: body,
+        image: image,
+        // icon: "icon",
+        // sound: "sound",
       },
     };
 
-    const response = await admin.messaging().send(msg);
-    console.log("Successfully sent message:", response);
+    if (topic != undefined) {
+      console.log("specific topic...");
+      message.topic = topic;
 
-    res.status(200).json({
-      status: "success",
-      message: "notification sent",
-    });
+      // const topics = [
+      //   "general",
+      //   "promotions",
+      //   "offers",
+      //   "marketing",
+      //   "advertisement",
+      // ];
+
+      const response = await admin.messaging().send(message);
+      res.status(200).json({
+        status: "success",
+        message: "notification sent",
+      });
+    } else {
+      if (token.length > 1) {
+        console.log("multiple user token...");
+        message.tokens = token;
+        const response = await admin
+          .messaging()
+          .sendEachForMulticast(message)
+          .then((response) => {
+            if (response.failureCount > 0) {
+              const failedTokens = [];
+              response.responses.forEach((resp, idx) => {
+                if (!resp.success) {
+                  failedTokens.push(registrationTokens[idx]);
+                }
+              });
+            }
+            res.status(200).json({
+              status: "success",
+              message: "notification sent",
+            });
+          })
+          .catch((error) => {
+            res.status(200).json({
+              status: "failed",
+              message: "notification sent error",
+            });
+          });
+      } else {
+        console.log("specific user token...");
+        message.token = token[0];
+        const response = await admin
+          .messaging()
+          .send(message)
+          .then((response) => {
+            res.status(200).json({
+              status: "success",
+              message: "notification sent",
+            });
+          })
+          .catch((error) => {
+            res.status(200).json({
+              status: "failed",
+              message: "notification sent error",
+            });
+          });
+      }
+    }
   } catch (e) {
-    console.log(`notification sending error ${e}`);
     res.status(200).json({
       status: "notification-send-failed",
       message: "err",

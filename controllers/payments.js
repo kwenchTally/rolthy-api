@@ -2,22 +2,28 @@ const { getErrorFromCatch } = require("../helper/functions");
 const Order = require("../models/order");
 const Payment = require("../models/payment");
 const Customer = require("../models/customer");
+const Marketplace = require("../models/marketplace");
 const Subscription = require("../models/subscription");
-const { mailTo } = require("../controllers/sendgrid");
+const Delivery = require("../models/delivery");
+const { mailTo, smsTo } = require("../controllers/sendgrid");
 const { addNotification, addNotification1 } = require("../controllers/fcm");
 
 const addPayment = async (req, res) => {
   try {
     let result;
+    let result2;
+    let query;
     if (req.body.subscriptions) {
       const result1 = await Order.insertMany(req.body.orders);
       let obj = { ...req.body };
       obj.orders = result1.map((e) => e._id);
       cObj = new Payment(obj);
 
-      let result2 = await cObj.save();
+      result2 = await cObj.save();
       let sobj = { ...req.body.subscriptions };
       sobj.payment = result2.id;
+
+      query = sobj;
 
       sObj = new Subscription(sobj);
       result = await sObj.save();
@@ -37,16 +43,15 @@ const addPayment = async (req, res) => {
         { path: "items", model: "Product" },
         { path: "payment", model: "Payment" },
       ]);
-      console.log(JSON.stringify(result));
-      await SendPurchaseNotification(result2, result.customer);
     } else if (req.body.orders) {
       const result1 = await Order.insertMany(req.body.orders);
 
       let obj = { ...req.body };
       obj.orders = result1.map((e) => e._id);
+      query = obj;
+
       cObj = new Payment(obj);
       result = await cObj.save();
-
       result = await result.populate([
         {
           path: "orders",
@@ -60,27 +65,311 @@ const addPayment = async (req, res) => {
         { path: "customer", model: "Customer" },
         { path: "method", model: "PaymentMethod" },
       ]);
-
-      console.log("\n");
-      await SendPurchaseNotification(result);
     } else {
+      query = req.body;
       cObj = new Payment(req.body);
       result = await cObj.save();
     }
 
+    let result1;
     try {
-      if (req.body.customer != undefined) {
-        const res1 = await Customer.find({ _id: req.body.customer });
-        const data = {
-          title: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
-          body: `Your ${req.body.keyword} has been placed successfully. Thank you for ${req.body.keyword}.`,
-          image: "",
-          token: res1[0].token,
-        };
-        await addNotification1(data);
+      let addr = [];
+      let keyword = result.keyword;
+      if (keyword === undefined) result.payment.keyword;
+      if (keyword === undefined) {
+        console.log("subscription");
+        result1 = Payment.find({ _id: result.payment._id });
+        result1 = await result1.populate([
+          {
+            path: "orders",
+            model: "Order",
+            populate: [
+              { path: "item", model: "Product" },
+              { path: "products", model: "Product" },
+              { path: "delivery_address", model: "Address" },
+              { path: "customer", model: "Customer" },
+              {
+                path: "marketplace",
+                model: "MarketPlace",
+                populate: [{ path: "address", model: "Address" }],
+              },
+            ],
+          },
+        ]);
+
+        result1 = result1[0];
+        const r0 = result1.orders.map((e) => {
+          return {
+            customer: {
+              id: e.customer._id.toString(),
+              name: `${e.customer.firstname} ${e.customer.lastname}`,
+              mobile: e.customer.mobile,
+              email: e.customer.email,
+              address: `${
+                e.delivery_address.street === ""
+                  ? ""
+                  : `${e.delivery_address.street}, `
+              }${
+                e.delivery_address.appartment === ""
+                  ? ""
+                  : `${e.delivery_address.appartment}, `
+              }${e.delivery_address.city}, ${e.delivery_address.state} ${
+                e.delivery_address.zipcode
+              }, ${e.delivery_address.country}`,
+            },
+            marketplace: {
+              id: e.marketplace._id.toString(),
+              name: `${e.marketplace.name}`,
+              mobile: e.marketplace.mobile,
+              email: e.marketplace.email,
+              address: `${
+                e.marketplace.address[0].street === ""
+                  ? ""
+                  : `${e.marketplace.address[0].street}, `
+              }${
+                e.marketplace.address[0].appartment === ""
+                  ? ""
+                  : `${e.marketplace.address[0].appartment}, `
+              }${e.marketplace.address[0].city}, ${
+                e.marketplace.address[0].state
+              } ${e.marketplace.address[0].zipcode}, ${
+                e.marketplace.address[0].country
+              }`,
+            },
+            item: {
+              id: e.item._id.toString(),
+              name: e.item.name,
+              category: `${e.item.category} [ ${e.item.subcategory} ]`,
+              company: e.item.company,
+            },
+            order: {
+              id: e._id.toString(),
+              mode: e.delivery_option,
+              option: e.delivery_type,
+              charge: e.delivery_charge,
+            },
+
+            subscription: {
+              id: result._id.toString(),
+              shipping: result.delivery,
+              slot: "",
+              from: new Date(result.startOn),
+              to: new Date(result.endAt),
+            },
+          };
+        });
+
+        addr = r0;
+      } else {
+        console.log("order, reorder");
+        result1 = Payment.find({ _id: result._id });
+        result1 = await result1.populate([
+          {
+            path: "orders",
+            model: "Order",
+            populate: [
+              { path: "item", model: "Product" },
+              { path: "products", model: "Product" },
+              { path: "delivery_address", model: "Address" },
+              { path: "customer", model: "Customer" },
+              {
+                path: "marketplace",
+                model: "MarketPlace",
+                populate: [{ path: "address", model: "Address" }],
+              },
+            ],
+          },
+        ]);
+
+        result1 = result1[0];
+
+        const r0 = result1.orders.map((e) => {
+          return {
+            customer: {
+              id: e.customer._id.toString(),
+              name: `${e.customer.firstname} ${e.customer.lastname}`,
+              mobile: e.customer.mobile,
+              email: e.customer.email,
+              address: `${
+                e.delivery_address.street === ""
+                  ? ""
+                  : `${e.delivery_address.street}, `
+              }${
+                e.delivery_address.appartment === ""
+                  ? ""
+                  : `${e.delivery_address.appartment}, `
+              }${e.delivery_address.city}, ${e.delivery_address.state} ${
+                e.delivery_address.zipcode
+              }, ${e.delivery_address.country}`,
+            },
+            marketplace: {
+              id: e.marketplace._id.toString(),
+              name: `${e.marketplace.name}`,
+              mobile: e.marketplace.mobile,
+              email: e.marketplace.email,
+              address: `${
+                e.marketplace.address[0].street === ""
+                  ? ""
+                  : `${e.marketplace.address[0].street}, `
+              }${
+                e.marketplace.address[0].appartment === ""
+                  ? ""
+                  : `${e.marketplace.address[0].appartment}, `
+              }${e.marketplace.address[0].city}, ${
+                e.marketplace.address[0].state
+              } ${e.marketplace.address[0].zipcode}, ${
+                e.marketplace.address[0].country
+              }`,
+            },
+            item: {
+              id: e.item._id.toString(),
+              name: e.item.name,
+              category: `${e.item.category} [ ${e.item.subcategory} ]`,
+              company: e.item.company,
+            },
+            order: {
+              id: e._id.toString(),
+              mode: e.delivery_option,
+              option: e.delivery_type,
+              charge: e.delivery_charge,
+            },
+          };
+        });
+
+        addr = r0;
       }
+
+      addr.map(async (e) => {
+        const dData = {
+          customer: e.customer,
+          marketplace: e.marketplace,
+          item: e.item,
+          order: e.order,
+          keyword: result1.keyword,
+        };
+        if (keyword === undefined) {
+          dData["subscription"] = e.subscription;
+        }
+        const dObj = new Delivery(dData);
+        const dResult = await dObj.save();
+      });
+
+      let msg;
+      let msg1;
+      const res2 = req.body.subscriptions !== undefined ? result2 : result;
+
+      const orderId = res2._id.toString();
+      const paymentId = res2.reference;
+      const amount = res2.amount;
+      const orderType = res2.keyword;
+      let customerName = `${res2.customer.firstname} ${res2.customer.lastname}`;
+      let customerEmail = res2.customer.email;
+      let customerMobile = res2.customer.mobile;
+
+      const customer = result.customer;
+
+      if (res2.customer.firstname == undefined && customer != undefined)
+        customerName = `${customer.firstname} ${customer.lastname}`;
+      if (customerEmail == undefined && customer != undefined)
+        customerEmail = customer.email;
+      if (customerMobile == undefined && customer != undefined)
+        customerMobile = customer.mobile;
+
+      msg = `Dear ${customerName}, Thank you for the purchase. Your ${orderType.toLowerCase()} ref. ${orderId} with payment ref. ${paymentId} is confirmed for the amount $${amount}.`;
+      ///customer email
+      try {
+        const sendPurchaseEmailData1 = {
+          to: [customerEmail],
+          subject: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
+          text: msg,
+        };
+        await mailTo(sendPurchaseEmailData1);
+      } catch (e) {
+        console.log("email sending error");
+      }
+      ///customer sms
+      try {
+        const sendPurchaseSMSData1 = {
+          to: customerMobile,
+          subject: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
+          text: msg,
+        };
+        await smsTo(sendPurchaseSMSData1);
+      } catch (err) {
+        console.log("SMS sending Error:");
+        console.log(err);
+      }
+
+      //customer
+      try {
+        if (req.body.customer != undefined) {
+          const res1 = await Customer.find({ _id: req.body.customer });
+          const data = {
+            title: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
+            body: `Your ${req.body.keyword} has been placed successfully. Thank you for ${req.body.keyword}.`,
+            image: "",
+            token: res1[0].token,
+          };
+          await addNotification1(data);
+        }
+      } catch (e) {
+        console.log("Error Notification:");
+        console.log(e);
+      }
+      //marketplace
+      let itemFields = "";
+      let customerStr = "";
+      let index = 0;
+      let rs2 = res2.orders.map((e) => {
+        itemFields += `${e.item.name} [qty.: ${e.item.quantity}]${
+          index > res2.length - 1 ? ", " : ""
+        }`;
+        index++;
+      });
+
+      res2.orders.map(async (e) => {
+        let res1 = await Marketplace.find({ _id: e.marketplace });
+        res1 = res1[0];
+        let marketplaceName = `${res1.name}`;
+        let marketplaceEmail = res1.email;
+        let marketplaceMobile = res1.mobile;
+
+        ///marketplace email
+        const msg1 = `Dear marketplace partner, You have received ${req.body.keyword.toLowerCase()} of ${itemFields} for reference id: ${res2._id.toString()}.`;
+        const sendPurchaseEmailData2 = {
+          to: [marketplaceEmail],
+          subject: `${process.env.APP_NAME.toUpperCase()}-NOTIFICATION`,
+          text: msg1,
+        };
+        await mailTo(sendPurchaseEmailData2);
+        ///marketplace sms
+        try {
+          const sendPurchaseSMSData2 = {
+            to: marketplaceMobile,
+            subject: `${process.env.APP_NAME.toUpperCase()}-NOTIFICATION`,
+            text: msg1,
+          };
+          await smsTo(sendPurchaseSMSData2);
+        } catch (err) {
+          console.log("SMS sending Error:");
+          console.log(err);
+        }
+        ///marketplace notification
+        try {
+          const data = {
+            title: `${process.env.APP_NAME.toUpperCase()}-NOTIFICATION`,
+            body: msg1,
+            image: "",
+            token: res1[0].token,
+          };
+          await addNotification1(data);
+        } catch (e) {
+          console.log("Error Notification:");
+          console.log(e);
+        }
+      });
     } catch (e) {
-      console.log("Error Notification:");
+      console.log("Error Delivery add:");
       console.log(e);
     }
 
@@ -90,7 +379,7 @@ const addPayment = async (req, res) => {
   }
 };
 
-const SendPurchaseNotification = async (result, customer) => {
+const SendPurchaseNotification = async (result, customer, marketplace) => {
   try {
     const orderId = result._id.toString();
     const paymentId = result.reference;
@@ -107,6 +396,59 @@ const SendPurchaseNotification = async (result, customer) => {
     if (customerMobile == undefined && customer != undefined)
       customerMobile = customer.mobile;
 
+    let rs1 = result.orders.map((e) => {
+      const e1 = {
+        item: {
+          id: e.item._id.toString(),
+          name: e.item.name,
+          qty: e.quantity,
+          price: e.price,
+        },
+        customer: {
+          id: e.customer._id.toString(),
+          name: `${e.customer.firstname} ${e.customer.lastname}`,
+          mobile: e.customer.mobile,
+          email: e.customer.email,
+          address: `${
+            e.delivery_address.street === ""
+              ? ""
+              : `${e.delivery_address.street}, `
+          }${
+            e.delivery_address.appartment === ""
+              ? ""
+              : `${e.delivery_address.appartment}, `
+          }${e.delivery_address.city}, ${e.delivery_address.state} ${
+            e.delivery_address.zipcode
+          }, ${e.delivery_address.country}`,
+        },
+      };
+      return e1;
+    });
+
+    let itemFields = "";
+    let customerStr = "";
+    let index = 0;
+    let rs2 = rs1.map((e) => {
+      itemFields += `${e.item.name} [x${e.item.qty}]${
+        index > rs1.length - 1 ? ", " : ""
+      }`;
+      index++;
+    });
+
+    let marketplaceName = `${result.marketplace.firstname} ${result.marketplace.lastname}`;
+    let marketplaceEmail = result.marketplace.email;
+    let marketplaceMobile = result.marketplace.mobile;
+
+    if (result.marketplace.firstname == undefined && marketplace != undefined)
+      marketplaceName = `${marketplace.firstname} ${marketplace.lastname}`;
+    if (marketplaceEmail == undefined && marketplace != undefined)
+      marketplaceEmail = marketplace.email;
+    if (marketplaceMobile == undefined && marketplace != undefined)
+      marketplaceMobile = marketplace.mobile;
+
+    const msg1 = `Dear marketplace partner, You have received an ${req.body.keyword} of ${itemFields}.`;
+
+    ///customer
     const msg = `Dear ${customerName}, Thank you for the purchase. Your ${orderType} ref. ${orderId} with payment ref. ${paymentId} is confirmed for the amount $${amount}.`;
     const sendPurchaseEmailData = {
       to: [customerEmail],
@@ -114,6 +456,39 @@ const SendPurchaseNotification = async (result, customer) => {
       text: msg,
     };
     await mailTo(sendPurchaseEmailData);
+
+    ///marketplace
+    const sendPurchaseEmailData1 = {
+      to: [customerEmail],
+      subject: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
+      text: msg1,
+    };
+    await mailTo(sendPurchaseEmailData1);
+
+    ///customer
+    try {
+      const sendPurchaseSMSData = {
+        to: customerMobile,
+        subject: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
+        text: msg,
+      };
+      await smsTo(sendPurchaseSMSData);
+    } catch (err) {
+      console.log("SMS sending Error:");
+      console.log(err);
+    }
+    ///marketplace
+    try {
+      const sendPurchaseSMSData1 = {
+        to: customerMobile,
+        subject: `${process.env.APP_NAME.toUpperCase()}-PURCHASE`,
+        text: msg1,
+      };
+      await smsTo(sendPurchaseSMSData1);
+    } catch (err) {
+      console.log("SMS sending Error:");
+      console.log(err);
+    }
   } catch (err) {
     console.log("email sending error");
   }
@@ -165,6 +540,7 @@ const getAllPayment = async (req, res) => {
   try {
     const { sort, select } = req.query;
     const {
+      id,
       reference,
       method,
       customer,
@@ -176,6 +552,10 @@ const getAllPayment = async (req, res) => {
       date,
     } = req.body;
     const queryObject = {};
+
+    if (id) {
+      queryObject._id = { $eq: id };
+    }
 
     if (reference) {
       queryObject.reference = { $eq: reference };
@@ -212,7 +592,9 @@ const getAllPayment = async (req, res) => {
       queryObject.createAt = { $regex: date, $options: "i" };
     }
 
-    let apiData = Payment.find(queryObject).populate([
+    let apiData = Payment.find(queryObject);
+
+    apiData.populate([
       { path: "orders", model: "Order" },
       { path: "customer", model: "Customer" },
       { path: "method", model: "PaymentMethod" },

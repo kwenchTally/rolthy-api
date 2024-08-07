@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title><%= title %></title>
+  <script src="<%= isProduction ? 'https://web.squarecdn.com/v1/square.js' : 'https://sandbox.web.squarecdn.com/v1/square.js' %>"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script>
+    window.onload = async function() {
+      const payments = Square.payments('<%= sourceId %>', '<%= locationId %>');
+      const card = await payments.card();
+      await card.attach('#card-container');
+      card.className = 'hide';
+      document.getElementById('card-container')
+        .className = 'hide'
+
+      const queryKey = "<%= key %>";
+      console.log('Query Key:', queryKey);
+
+      const subscriptionTitle = document.getElementById('subscription-title');
+      const itemTitle = document.getElementById('item-title');
+      if (queryKey === "subscribe") {
+        itemTitle.innerText = "Subscription Items:"
+        subscriptionTitle.innerText = "Subscription Plan: <%- data.subscription %>"
+      } else {
+        itemTitle.innerText = "Purchase Items:"
+        subscriptionTitle.className = "hide";
+      }
+
+      const form = document.getElementById('payment-form');
+      const progressText = document.getElementById('progress-text');
+      ///
+      const formDiv = document.getElementById('form');
+      const resultDiv = document.getElementById('result');
+      const resultText = document.getElementById('result-text');
+      ///
+      const iframe = document.getElementsByClassName('sq-card-component');
+
+      const checkboxes = document.querySelectorAll('.card-checkbox');
+      const selectedCards = [];
+      checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', (event) => {
+          const cardIndex = event.target.getAttribute('data-index');
+          const cardBrand = event.target.getAttribute('data-brand');
+          const cardNumber = event.target.getAttribute('data-number');
+          const cardExpiry = event.target.getAttribute('data-expiry');
+
+          if (event.target.checked) {
+            selectedCards.push({
+              index: cardIndex
+              , brand: cardBrand
+              , number: cardNumber
+              , expiry: cardExpiry
+            });
+          } else {
+            const cardIndexToRemove = selectedCards.findIndex(card => card.index === cardIndex);
+            if (cardIndexToRemove > -1) {
+              selectedCards.splice(cardIndexToRemove, 1);
+            }
+          }
+        });
+      });
+
+      let selectedCard = null;
+      let cards = '<%- JSON.stringify(data.cards) %>' || [];
+      cards = JSON.parse(cards)
+      const customerId = '<%= data.customer %>' || '';
+
+      const cardRadio = document.querySelector('.card-radio');
+      if (cardRadio) {
+        cardRadio.checked = true;
+        const cardIndex = cardRadio.getAttribute('data-index');
+        const cardBrand = cardRadio.getAttribute('data-brand');
+        const cardNumber = cardRadio.getAttribute('data-number');
+        const cardExpiry = cardRadio.getAttribute('data-expiry');
+
+        selectedCard = {
+          index: cardIndex
+          , brand: cardBrand
+          , number: cardNumber
+          , expiry: cardExpiry
+          , type: cards[cardIndex].type
+          , token: cards[cardIndex].token
+          , id: cards[cardIndex].id
+        , };
+      }
+
+      const radios = document.querySelectorAll('.card-radio');
+      radios.forEach(radio => {
+        radio.addEventListener('change', (event) => {
+          const cardIndex = event.target.getAttribute('data-index');
+          const cardBrand = event.target.getAttribute('data-brand');
+          const cardNumber = event.target.getAttribute('data-number');
+          const cardExpiry = event.target.getAttribute('data-expiry');
+
+          selectedCard = {
+            index: cardIndex
+            , brand: cardBrand
+            , number: cardNumber
+            , expiry: cardExpiry
+            , type: cards[cardIndex].type
+            , token: cards[cardIndex].token
+            , id: cards[cardIndex].id
+          , };
+        });
+      });
+
+      let cardToken;
+
+      const cardCancelButton = document.getElementById('cancel-add-card');
+      cardCancelButton.onclick = async function(event) {
+        event.preventDefault();
+
+        card.className = 'hide';
+        document.getElementById('card-container')
+          .className = 'hide'
+        cardButton.textContent = '+ Add Payment Card';
+        cardButton.className = "button1 btn2 noFlex"
+        cardCancelButton.className = 'hide';
+      }
+
+      const cardButton = document.getElementById('add-card');
+      cardButton.onclick = async function(event) {
+        event.preventDefault();
+
+        if (card.className === 'hide') {
+          card.className = 'show';
+          document.getElementById('card-container')
+            .className = 'show'
+          cardButton.textContent = 'Proceed';
+          cardButton.className = "button1 btn2 flex"
+          cardCancelButton.className = 'button1 btn2 btn3 show'
+        } else {
+          const result = await card.tokenize();
+          if (result.status === 'OK') {
+            const cardToken = result.token;
+
+            const body = JSON.stringify({
+              nounce: cardToken
+              , customerId: customerId
+            , })
+
+            const response = await fetch(
+              'card/attach', {
+                method: 'POST'
+                , headers: {
+                  'Content-Type': 'application/json'
+                }
+                , body: body
+              });
+            let result1 = await response.json();
+            result1 = JSON.parse(result1);
+
+            if (result1) {
+              const e = result1;
+              cards = [{
+                id: e.id
+                , token: e.id
+                , number: `${e.bin}********${e.last4}`
+                , expiry: `${e.expMonth}/${e.expYear.replaceAll("20", "")}`
+                , type: e.cardType.replaceAll("CARD", "")
+                , brand: e.cardBrand
+              , }, ...cards]
+
+              // Update the cards list
+              const cardsList = document.getElementById('cards-list');
+              cardsList.innerHTML = '';
+              cards.forEach((card, index) => {
+                const cardItem = document.createElement('div');
+                cardItem.className = 'card-item';
+                cardItem.innerHTML = `
+              <input type="radio" name="card" class="card-radio" id="card-${index}" data-index="${index}" data-brand="${card.brand}" data-number="${card.number}" data-expiry="${card.expiry}">
+              <label for="card-${index}" class="custom-radio-label fill">
+                <div class="card-left padX10 center-align">
+                  <div class="w-max">${card.number.replace(/(.{4})/g, '$1 ').trim()} <div></div> ${card.expiry}</div>
+                </div>
+                <label for="card-${index}" class="fill">
+                  <div class="card-right padX10 w900 end-align-txt">
+                    ${card.brand}
+                  </div>
+                </label>
+              </label>
+            `;
+                cardsList.appendChild(cardItem);
+
+                cardItem.addEventListener('change', (event) => {
+                  const cardIndex = event.target.getAttribute('data-index');
+                  const cardBrand = event.target.getAttribute('data-brand');
+                  const cardNumber = event.target.getAttribute('data-number');
+                  const cardExpiry = event.target.getAttribute('data-expiry');
+
+                  selectedCard = {
+                    index: cardIndex
+                    , brand: cardBrand
+                    , number: cardNumber
+                    , expiry: cardExpiry
+                    , type: cards[cardIndex].type
+                    , token: cards[cardIndex].token
+                    , id: cards[cardIndex].id
+                  , };
+                });
+
+                //select card
+                const cardRadio = document.querySelector('.card-radio');
+                if (cardRadio) {
+                  cardRadio.checked = true;
+                  const cardIndex = cardRadio.getAttribute('data-index');
+                  const cardBrand = cardRadio.getAttribute('data-brand');
+                  const cardNumber = cardRadio.getAttribute('data-number');
+                  const cardExpiry = cardRadio.getAttribute('data-expiry');
+
+                  selectedCard = {
+                    index: cardIndex
+                    , brand: cardBrand
+                    , number: cardNumber
+                    , expiry: cardExpiry
+                    , type: cards[cardIndex].type
+                    , token: cards[cardIndex].token
+                    , id: cards[cardIndex].id
+                  , };
+                }
+              });
+
+            } else {
+
+            }
+
+            card.className = 'hide';
+            document.getElementById('card-container')
+              .className = 'hide'
+            cardButton.textContent = '+ Add Payment Card';
+            cardButton.className = "button1 btn2 noFlex"
+            cardCancelButton.className = 'button1 btn2 btn3 hide'
+            progressText.innerText = 'Card has been added. Now click on Pay Now to pay amount.';
+          } else {
+            progressText.innerText = 'Card Add Process Failed!';
+          }
+        }
+
+        const cardContainer = document.getElementById('card-container');
+        let cardElement;
+        cardElement = cardContainer.querySelector('.sq-card-component');
+      }
+
+      form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        let amount = '<%= data.amount %>' || 1;
+        amount = parseFloat(amount);
+        let items = '<%= data.items %>' || [];
+
+        const note = '<%= data.note %>' || "";
+        const planId = '<%= data.plan.planId %>' || "";
+        const planVariationId = '<%= data.plan.planVariationId %>' || "";
+
+
+        let response;
+        let body;
+        try {
+          progressText.innerText = 'Processing payment...';
+          progressText.className = 'progress-text progress-orange';
+          resultText.className = "hide";
+
+          if (queryKey == "subscribe") {
+            console.log("1")
+            body = JSON.stringify({
+              cardId: cardToken || selectedCard.id
+              , price: amount
+              , customerId: customerId
+              , planId: planId
+              , planVariationId: planVariationId
+              , note: note
+            , })
+
+            response = await fetch(
+              'new/subscription', {
+                method: 'POST'
+                , headers: {
+                  'Content-Type': 'application/json'
+                }
+                , body: body
+              });
+          } else if (queryKey == "pay") {
+            console.log("2")
+            body = JSON.stringify({
+              nonce: cardToken || selectedCard.id
+              , amount: amount
+              , customerId: customerId
+              , note: note || ""
+            , })
+
+            response = await fetch(
+              'process-payment', {
+                method: 'POST'
+                , headers: {
+                  'Content-Type': 'application/json'
+                }
+                , body: body
+              });
+          } else {
+            console.log("3")
+          }
+
+          const result = await response.json();
+          if (result.payment) {
+            const payment = result.payment
+            progressText.innerText = `Your payment with ref. ${payment.id} has been successful.`;
+            progressText.className = 'progress-text progress-green w500 fntMath m1020';
+          } else if (result.subscription) {
+            const subscription = result.subscription
+            progressText.innerText = `Your subscription with ref. ${subscription.id} has been added successfully.`;
+            progressText.className = 'progress-text progress-green w500 fntMath m1020';
+          } else {
+            const err = result.error[0]?.detail || result.error;
+            progressText.innerText = 'Payment failed: ' + err;
+            progressText.className = 'progress-text progress-red';
+          }
+
+          //animate
+          if (result.success) {
+            formDiv.classList.remove('show');
+            resultDiv.classList.remove('hide');
+            //hide form
+            formDiv.className = "hide"
+
+            resultText.innerHTML = '<i class="fas fa-check check-icon"></i> Payment Successful';
+            resultText.className = "progress-text success";
+          } else {
+            resultDiv.classList.add('show-with-animate');
+            resultText.innerHTML = '<i class="fas fa-times cross-icon"></i> Payment Failed!';
+            resultText.className = "progress-text failed";
+          }
+
+        } catch (error) {
+          progressText.innerText = 'Payment failed: ' + error.message;
+          progressText.className = 'progress-text progress-red';
+        }
+      });
+    }
+  </script>
+  <style>
+  </style>
+</head>
+
+<body class="rmSelection">
+
+
+  <div id="form" class="show">
+    <form id="payment-form">
+
+      <div class="header center-align-txt">
+        <h1 class="price-text">Habitoza Pay</h1>
+      </div>
+
+      <div class="item-list fnt12" id="cards-list">
+        <% data.cards.forEach((card, index) => { %>
+        <div class="card-item">
+
+          <input type="radio" name="card" class="card-radio" id="card-<%= index %>" data-index="<%= index %>" data-brand="<%= card.brand %>" data-number="<%= card.number %>" data-expiry="<%= card.expiry %>">
+          <label for="card-<%= index %>" class="custom-radio-label fill">
+            <div class="card-left padX10 center-align">
+              <div class="w-max"><%= card.number.replace(/(.{4})/g, '$1 ').trim() %> <div></div> <%= card.expiry %></div>
+            </div>
+            <label for="card-<%= index %>" class="fill">
+
+              <div class="card-right padX10 w900 end-align-txt">
+                <%= card.brand %>
+              </div>
+            </label>
+        </div>
+        <% }); %>
+      </div>
+
+      <div id="card-container" class="card-item"></div>
+
+      <div class="button-container">
+        <button id="add-card" class="button1 btn2 noFlex" type="button">+ Add Payment Card</button>
+        <button id="cancel-add-card" class="button1 btn2 btn3 hide" type="button">Cancel</button>
+      </div>
+
+      <div class="order-summary">
+        <h2 id="item-title" class="title fnt14 fntMath clGreen w500"></h2>
+        <table class="item-list">
+          <% data.items.forEach(item => { %>
+          <tr>
+            <td><%= item.name %> x<%= item.quantity %></td>
+            <td>$<%= item.price %></td>
+          </tr>
+          <% }); %>
+        </table>
+        <h2 id="subscription-title" class="title fnt14 fntMath clGreen w500"></h2>
+      </div>
+
+      <div class="payment-action">
+        <h1 class="price-text" id="amount">$<%= data.amount %></h1>
+        <button class="button btn1" type="submit">Pay Now</button>
+      </div>
+
+    </form>
+  </div>
+
+  <div id="result" class="show">
+    <div id="result-text" class="progress-text"></div>
+  </div>
+
+  <div id="progress-text" class="progress-text"></div>
+
+</body>
+
+</html>

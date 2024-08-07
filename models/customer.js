@@ -53,6 +53,10 @@ const customerSchema = new mongoose.Schema({
     required: false,
     default: "",
   },
+  preference: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "preferences",
+  },
   active: {
     type: Boolean,
     default: true,

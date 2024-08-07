@@ -69,6 +69,10 @@ const marketplaceSchema = new mongoose.Schema({
     required: false,
     default: "",
   },
+  preference: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "preferences",
+  },
   available: {
     type: Boolean,
     default: true,

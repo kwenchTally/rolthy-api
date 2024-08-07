@@ -46,3 +46,15 @@ body {
   text-decoration: none;
   cursor: pointer;
 }
+
+.button {
+  color: azure;
+  background-color: crimson;
+  border-radius: 15px;
+  padding: 5px 18px 5px 18px;
+  font-size: 12px;
+  font-family: monospace;
+  font-weight: 500;
+  border: initial;
+  offset: none;
+}
