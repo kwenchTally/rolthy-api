@@ -57,6 +57,11 @@ const customerSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "preferences",
   },
+  sqReference: {
+    type: String,
+    required: false,
+    default: "",
+  },
   active: {
     type: Boolean,
     default: true,

@@ -208,7 +208,7 @@ const getDelivery = async (req, res) => {
 
 const getAllDelivery = async (req, res) => {
   try {
-    const { sort, select } = req.query;
+    const { sort, select, count, isTotal } = req.query;
     const {
       customer,
       marketplace,
@@ -236,39 +236,51 @@ const getAllDelivery = async (req, res) => {
       active,
       deleted,
       createAt,
+      delivered,
+      accepted,
+      completed,
+      violation,
     } = req.body;
     const queryObject = {};
 
     if (customer) {
       queryObject.customer = customer;
+      // queryObject.customer = { $eq: customer };
     }
 
     if (marketplace) {
-      queryObject.marketplace = marketplace;
+      // queryObject.marketplace = marketplace;
+      queryObject.marketplace = { $eq: marketplace };
     }
 
     if (driver) {
-      queryObject.driver = driver;
+      // queryObject.driver = driver;
+      queryObject.driver = { $eq: driver };
     }
 
     if (delivery_id) {
-      queryObject.delivery_id = { $regex: delivery_id, $options: "i" };
+      // queryObject.delivery_id = { $regex: delivery_id, $options: "i" };
+      queryObject.delivery_id = { $eq: delivery_id };
     }
 
     if (order_id) {
-      queryObject.order_id = { $regex: order_id, $options: "i" };
+      // queryObject.order_id = { $regex: order_id, $options: "i" };
+      queryObject.order_id = { $eq: order_id };
     }
 
     if (order) {
       queryObject.order = order;
+      // queryObject.order = { $eq: order };
     }
 
     if (item) {
       queryObject.item = item;
+      // queryObject.item = { $eq: item };
     }
 
     if (subscription) {
-      queryObject.subscription = subscription;
+      // queryObject.subscription = subscription;
+      queryObject.subscription = { $eq: subscription };
     }
 
     if (keyword) {
@@ -331,6 +343,22 @@ const getAllDelivery = async (req, res) => {
       queryObject.status = status;
     }
 
+    if (delivered) {
+      queryObject.delivered = delivered;
+    }
+
+    if (accepted) {
+      queryObject.accepted = accepted;
+    }
+
+    if (completed) {
+      queryObject.completed = completed;
+    }
+
+    if (violation) {
+      queryObject.violation = violation;
+    }
+
     if (active) {
       queryObject.active = active;
     }
@@ -368,14 +396,524 @@ const getAllDelivery = async (req, res) => {
     let limit = Number(req.query.limit) || 25;
     let skip = (page - 1) * limit;
 
-    apiData = apiData.skip(skip).limit(limit);
+    // apiData = apiData.skip(skip).limit(limit);
 
-    const data = await apiData;
-    res.status(200).json({ count: data.length, data });
+    // const data = await apiData;
+    // res.status(200).json({ count: data.length, data });
+    if (count) {
+      if (isTotal) {
+        apiData = apiData.estimatedDocumentCount(); //total
+      } else {
+        apiData = apiData.countDocuments(queryObject);
+      }
+      const data = await apiData;
+      res.status(200).json({ result: "success", data });
+    } else {
+      // apiData = apiData.skip(skip).limit(limit).sort({ createAt: 1 });
+      apiData = apiData.skip(skip).limit(limit).sort({ createAt: -1 });
+      const data = await apiData;
+      res.status(200).json({ count: data.length, data });
+    }
   } catch (e) {
     res.status(400).json(getErrorFromCatch(e));
   }
 };
+
+async function getDeliverySummary(req, res) {
+  const {
+    marketplace,
+    customer,
+    item,
+    order,
+    driver,
+    delivery_id,
+    keyword,
+    assigned,
+    status,
+    accepted,
+    completed,
+    violation,
+
+    delivery_address,
+    date,
+    start,
+    end,
+    timePeriod,
+  } = req.body;
+
+  let startDate, endDate;
+  let orderBetween;
+  const now = new Date();
+
+  switch (timePeriod) {
+    case "today":
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      break;
+    case "week":
+      const startOfWeek = now.getDate() - now.getDay();
+      startDate = new Date(now.getFullYear(), now.getMonth(), startOfWeek);
+      endDate = new Date(now.getFullYear(), now.getMonth(), startOfWeek + 7);
+      break;
+    case "month":
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      break;
+    case "year":
+      startDate = new Date(now.getFullYear(), 0, 1);
+      endDate = new Date(now.getFullYear() + 1, 0, 1);
+      break;
+    default:
+      throw new Error(
+        'Invalid time period specified. Choose from "today", "week", "month", or "year".'
+      );
+  }
+
+  orderBetween = {
+    from: startDate.toISOString().split("T")[0],
+    to: endDate.toISOString().split("T")[0],
+  };
+
+  const matchCriteria = {
+    deleted: false,
+    createAt: {
+      $gte: startDate,
+      $lt: endDate,
+    },
+  };
+
+  if (marketplace) {
+    matchCriteria["marketplace.id"] = marketplace;
+  }
+
+  if (customer) {
+    matchCriteria["customer.id"] = customer;
+  }
+
+  if (item) {
+    matchCriteria["item.id"] = item;
+  }
+
+  if (order) {
+    matchCriteria["order.id"] = order;
+  }
+
+  if (driver) {
+    matchCriteria["driver.id"] = driver;
+  }
+
+  if (delivery_id) {
+    matchCriteria.delivery_id = delivery_id;
+  }
+
+  if (keyword) {
+    matchCriteria.keyword = keyword;
+  }
+
+  if (assigned) {
+    matchCriteria.assigned = assigned;
+  }
+
+  if (status) {
+    matchCriteria.status = status;
+  }
+
+  if (accepted !== undefined) {
+    matchCriteria.accepted = accepted;
+  }
+
+  if (completed !== undefined) {
+    matchCriteria.completed = completed;
+  }
+
+  if (violation !== undefined) {
+    matchCriteria.violation = violation;
+  }
+
+  const deliveries = await Delivery.aggregate([
+    {
+      $match: matchCriteria,
+    },
+    {
+      $project: {
+        deliveryOn: {
+          $dateToString: { format: "%Y-%m-%d", date: "$createAt" },
+          // $dateToString: { format: "%Y-%m-%d", date: "$start_time" },
+        },
+        customer: { id: 1, name: 1, email: 1, mobile: 1, address: 1 },
+        marketplace: { id: 1, name: 1, email: 1, mobile: 1, address: 1 },
+        driver: { id: 1, name: 1, email: 1, mobile: 1, address: 1 },
+        item: { id: 1, name: 1, category: 1, company: 1 },
+        order: { id: 1, mode: 1, option: 1, charge: 1 },
+        delivery_id: 1,
+        status: 1,
+        keyword: 1,
+        accepted: 1,
+        completed: 1,
+        violation: 1,
+      },
+    },
+    {
+      $sort: { deliveryOn: -1 },
+    },
+  ]);
+
+  const totalDeliveries = deliveries.length;
+
+  const result = {
+    count: 1,
+    result: {
+      orderBetween,
+      totalDeliveries,
+      deliveries: deliveries.map((delivery) => ({
+        delivery_id: delivery.delivery_id,
+        deliveryOn: delivery.deliveryOn,
+        customer: delivery.customer,
+        marketplace: delivery.marketplace,
+        driver: delivery.driver,
+        item: delivery.item,
+        order: delivery.order,
+        status: delivery.status,
+        keyword: delivery.keyword,
+        accepted: delivery.accepted,
+        completed: delivery.completed,
+        violation: delivery.violation,
+      })),
+    },
+  };
+
+  console.log(result);
+  res.status(200).json(result);
+}
+
+async function getDeliverySummary1(req, res) {
+  const {
+    marketplace,
+    customer,
+    item,
+    order,
+    driver,
+    delivery_id,
+    keyword,
+    assigned,
+    status,
+    accepted,
+    completed,
+    violation,
+    timePeriod,
+    date,
+    start,
+    end,
+  } = req.body;
+
+  let startDate, endDate;
+  let deliveryBetween;
+  const now = new Date();
+
+  switch (timePeriod) {
+    case "today":
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      break;
+    case "week":
+      const startOfWeek = now.getDate() - now.getDay();
+      startDate = new Date(now.getFullYear(), now.getMonth(), startOfWeek);
+      endDate = new Date(now.getFullYear(), now.getMonth(), startOfWeek + 7);
+      break;
+    case "month":
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      break;
+    case "year":
+      startDate = new Date(now.getFullYear(), 0, 1);
+      endDate = new Date(now.getFullYear() + 1, 0, 1);
+      break;
+    case "date":
+      startDate = new Date(`${date}T00:00:00.000Z`);
+      endDate = new Date(`${date}T23:59:59.999Z`);
+      break;
+    case "dateRange":
+      startDate = new Date(`${start}T00:00:00.000Z`);
+      endDate = new Date(`${end}T23:59:59.999Z`);
+      break;
+    default:
+      throw new Error(
+        'Invalid time period specified. Choose from "today", "week", "month", or "year".'
+      );
+  }
+
+  deliveryBetween = {
+    from: startDate.toISOString().split("T")[0],
+    to: endDate.toISOString().split("T")[0],
+  };
+
+  const matchCriteria = {
+    deleted: false,
+    createAt: {
+      $gte: startDate,
+      $lt: endDate,
+    },
+  };
+
+  if (marketplace) matchCriteria["marketplace.id"] = marketplace;
+  if (customer) matchCriteria["customer.id"] = customer;
+  if (item) matchCriteria["item.id"] = item;
+  if (order) matchCriteria["order.id"] = order;
+  if (driver) matchCriteria["driver.id"] = driver;
+  if (delivery_id) matchCriteria.delivery_id = delivery_id;
+  if (keyword) matchCriteria.keyword = keyword;
+  if (assigned) matchCriteria.assigned = assigned;
+  if (status) matchCriteria.status = status;
+  if (accepted !== undefined) matchCriteria.accepted = accepted;
+  if (completed !== undefined) matchCriteria.completed = completed;
+  if (violation !== undefined) matchCriteria.violation = violation;
+
+  const deliveries = await Delivery.aggregate([
+    {
+      $match: matchCriteria,
+    },
+    {
+      $addFields: {
+        start_time: { $dateFromString: { dateString: "$start_time" } },
+        reach_time: { $dateFromString: { dateString: "$reach_time" } },
+      },
+    },
+    {
+      $project: {
+        delivery_id: 1,
+        customer: 1,
+        marketplace: 1,
+        suggested_route: 1,
+        delivery_route: 1,
+        start: 1,
+        end: 1,
+        distance: {
+          $cond: {
+            if: { $eq: ["$distance", ""] },
+            then: "0 mi",
+            else: "$distance",
+          },
+        },
+        duration: {
+          $cond: {
+            if: { $eq: ["$duration", ""] },
+            then: "0 mins",
+            else: "$duration",
+          },
+        },
+        start_time: 1,
+        reach_time: 1,
+        time_taken: {
+          $cond: {
+            if: { $eq: ["$time_taken", ""] },
+            then: "00:00:00",
+            else: "$time_taken",
+          },
+        },
+        time_taken1: {
+          $let: {
+            vars: {
+              seconds: {
+                $dateDiff: {
+                  startDate: "$start_time",
+                  endDate: "$reach_time",
+                  unit: "second",
+                },
+              },
+              hours: {
+                $floor: {
+                  $divide: [
+                    {
+                      $dateDiff: {
+                        startDate: "$start_time",
+                        endDate: "$reach_time",
+                        unit: "second",
+                      },
+                    },
+                    3600,
+                  ],
+                },
+              },
+              minutes: {
+                $floor: {
+                  $mod: [
+                    {
+                      $divide: [
+                        {
+                          $dateDiff: {
+                            startDate: "$start_time",
+                            endDate: "$reach_time",
+                            unit: "second",
+                          },
+                        },
+                        60,
+                      ],
+                    },
+                    60,
+                  ],
+                },
+              },
+              secondsMod: {
+                $mod: [
+                  {
+                    $dateDiff: {
+                      startDate: "$start_time",
+                      endDate: "$reach_time",
+                      unit: "second",
+                    },
+                  },
+                  60,
+                ],
+              },
+            },
+            in: {
+              $concat: [
+                {
+                  $cond: {
+                    if: { $lt: [{ $strLenCP: { $toString: "$$hours" } }, 2] },
+                    then: { $concat: ["0", { $toString: "$$hours" }] },
+                    else: { $toString: "$$hours" },
+                  },
+                },
+                ":",
+                {
+                  $cond: {
+                    if: { $lt: [{ $strLenCP: { $toString: "$$minutes" } }, 2] },
+                    then: { $concat: ["0", { $toString: "$$minutes" }] },
+                    else: { $toString: "$$minutes" },
+                  },
+                },
+                ":",
+                {
+                  $cond: {
+                    if: {
+                      $lt: [{ $strLenCP: { $toString: "$$secondsMod" } }, 2],
+                    },
+                    then: { $concat: ["0", { $toString: "$$secondsMod" }] },
+                    else: { $toString: "$$secondsMod" },
+                  },
+                },
+              ],
+            },
+          },
+        },
+        origin: 1,
+        destination: 1,
+      },
+    },
+    {
+      $group: {
+        _id: {
+          deliveryOn: {
+            // $dateToString: { format: "%Y-%m-%d", date: "$createAt" },
+            $dateToString: { format: "%Y-%m-%d", date: "$start_time" },
+          },
+          status: "$status",
+          accepted: "$accepted",
+          completed: "$completed",
+          violation: "$violation",
+          driver: "$driver",
+        },
+        totalDeliveries: { $sum: 1 },
+        deliveries: {
+          $push: {
+            delivery_id: "$delivery_id",
+            customer: "$customer",
+            marketplace: "$marketplace",
+            suggested_route: "$suggested_route",
+            delivery_route: "$delivery_route",
+            start: "$start",
+            end: "$end",
+            distance: "$distance",
+            duration: "$duration",
+            start_time: "$start_time",
+            reach_time: "$reach_time",
+            time_taken: "$time_taken",
+            time_taken1: "$time_taken1",
+            origin: "$origin",
+            destination: "$destination",
+          },
+        },
+        totalDistance: {
+          $sum: {
+            $toDouble: { $arrayElemAt: [{ $split: ["$distance", " "] }, 0] },
+          },
+        },
+        totalDuration: {
+          $sum: {
+            $toDouble: { $arrayElemAt: [{ $split: ["$duration", " "] }, 0] },
+          },
+        },
+        totalTimeTaken: {
+          $sum: {
+            $toDouble: { $arrayElemAt: [{ $split: ["$time_taken", ":"] }, 2] },
+          },
+        },
+        totalTimeTaken1: {
+          $sum: {
+            $toDouble: { $arrayElemAt: [{ $split: ["$time_taken1", ":"] }, 2] },
+          },
+        },
+      },
+    },
+    {
+      $sort: { "_id.deliveryOn": -1 },
+    },
+    {
+      $project: {
+        _id: 0,
+        deliveryOn: "$_id.deliveryOn",
+        totalDeliveries: "$totalDeliveries",
+        totalDistance: { $concat: [{ $toString: "$totalDistance" }, " mi"] },
+        totalDuration: { $concat: [{ $toString: "$totalDuration" }, " mins"] },
+        totalTimeTaken: {
+          $concat: [{ $toString: "$totalTimeTaken" }, " secs"],
+        },
+        totalTimeTaken1: {
+          $concat: [{ $toString: "$totalTimeTaken1" }, " secs"],
+        },
+        status: "$_id.status",
+        accepted: "$_id.accepted",
+        completed: "$_id.completed",
+        violation: "$_id.violation",
+        driver: "$_id.driver",
+        deliveries: "$deliveries",
+      },
+    },
+  ]);
+
+  const totalDeliveries = deliveries.reduce(
+    (acc, curr) => acc + curr.totalDeliveries,
+    0
+  );
+  const totalDistance = deliveries.reduce(
+    (acc, curr) => acc + parseFloat(curr.totalDistance),
+    0
+  );
+  const totalDuration = deliveries.reduce(
+    (acc, curr) => acc + parseFloat(curr.totalDuration),
+    0
+  );
+  const totalTimeTaken = deliveries.reduce(
+    (acc, curr) => acc + parseFloat(curr.totalTimeTaken),
+    0
+  );
+
+  const result = {
+    count: 1,
+    result: {
+      deliveryBetween,
+      totalDeliveries,
+      totalDistance: `${totalDistance} mi`,
+      totalDuration: `${totalDuration} mins`,
+      totalTimeTaken: `${totalTimeTaken} secs`,
+      deliveriesByDate: deliveries,
+    },
+  };
+
+  console.log(result);
+  res.status(200).json(result);
+}
 
 module.exports = {
   getAllDelivery,
@@ -383,4 +921,6 @@ module.exports = {
   addDelivery,
   updateDelivery,
   deleteDelivery,
+  getDeliverySummary,
+  getDeliverySummary1,
 };

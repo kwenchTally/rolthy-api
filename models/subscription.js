@@ -34,6 +34,15 @@ const subscriptionSchema = new mongoose.Schema({
     },
     default: "Daily",
   },
+  planId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "plans",
+  },
+  sqSubscriptionReference: {
+    type: String,
+    required: false,
+    default: "",
+  },
   startOn: {
     type: Date,
     default: Date.now(),

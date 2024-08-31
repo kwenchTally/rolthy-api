@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Location = require("../models/location");
 
 const addressSchema = new mongoose.Schema({
   name: {
@@ -33,10 +34,7 @@ const addressSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  location: {
-    type: String,
-    default: "",
-  },
+  location: { type: Location.schema, default: [] },
   active: {
     type: Boolean,
     default: true,

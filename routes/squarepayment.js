@@ -40,6 +40,8 @@ const {
 
   attachCard,
   disableCard,
+
+  returnResult,
 } = require("../controllers/square");
 
 router.route("/locations").post(getLocations);
@@ -66,7 +68,7 @@ router.route("/generate-payment").get(generatePaymentCard);
 router.route("/process-payment").post(processPayment);
 router.route("/process-subscription").post(processSubscription);
 router.route("/process").post(viewPayment);
-router.route("/process").get(viewPayment);
+router.route("/process/get").get(viewPayment);
 
 router.route("/add/subscription").post(subscription);
 
@@ -80,5 +82,8 @@ router.route("/new/subscription").post(newSubscription);
 
 router.route("/card/attach").post(attachCard);
 router.route("/card/inactive").post(disableCard);
+
+router.route("/result").post(returnResult);
+router.route("/result").get(returnResult);
 
 module.exports = router;

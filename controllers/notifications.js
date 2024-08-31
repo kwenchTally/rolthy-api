@@ -54,7 +54,7 @@ const deleteNotification = async (req, res) => {
 
 const getAllNotification = async (req, res) => {
   try {
-    const { sort, select } = req.query;
+    const { sort, select, count, isTotal } = req.query;
     const {
       customer,
       marketplace,
@@ -74,11 +74,11 @@ const getAllNotification = async (req, res) => {
     }
 
     if (marketplace) {
-      queryObject.marketplace = { $regex: marketplace, $options: "i" };
+      queryObject.marketplace = { $eq: marketplace };
     }
 
     if (driver) {
-      queryObject.driver = { $regex: driver, $options: "i" };
+      queryObject.driver = { $eq: driver };
     }
 
     if (title) {
@@ -181,10 +181,24 @@ const getAllNotification = async (req, res) => {
     let limit = Number(req.query.limit) || 25;
     let skip = (page - 1) * limit;
 
-    apiData = apiData.skip(skip).limit(limit);
+    if (count) {
+      const countQuery = {};
+      if (status) {
+        countQuery.status = status;
+      }
 
-    const data = await apiData;
-    res.status(200).json({ count: data.length, data });
+      if (isTotal) {
+        apiData = apiData.estimatedDocumentCount(); //total
+      } else {
+        apiData = apiData.countDocuments(countQuery);
+      }
+      const data = await apiData;
+      res.status(200).json({ result: "success", data });
+    } else {
+      apiData = apiData.skip(skip).limit(limit);
+      const data = await apiData;
+      res.status(200).json({ count: data.length, data });
+    }
   } catch (e) {
     res.status(400).json(getErrorFromCatch(e));
   }

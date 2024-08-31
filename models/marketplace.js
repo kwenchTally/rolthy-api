@@ -7,6 +7,18 @@ const marketplaceSchema = new mongoose.Schema({
     required: false,
     default: "",
   },
+  firstname: {
+    type: String,
+    required: true,
+    minlength: 3,
+    default: "",
+  },
+  lastname: {
+    type: String,
+    required: true,
+    minlength: 3,
+    default: "",
+  },
   name: {
     type: String,
     required: true,
@@ -72,6 +84,36 @@ const marketplaceSchema = new mongoose.Schema({
   preference: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "preferences",
+  },
+  status: {
+    type: String,
+    default: "Open",
+  },
+  slots: {
+    type: Array,
+    default: [],
+  },
+  category: {
+    type: String,
+    default: "",
+  },
+  subcategory: {
+    type: String,
+    default: "",
+  },
+  sqReference: {
+    type: String,
+    required: false,
+    default: "",
+  },
+  sqStoreReference: {
+    type: String,
+    required: false,
+    default: "",
+  },
+  plans: {
+    type: Array,
+    default: [],
   },
   available: {
     type: Boolean,

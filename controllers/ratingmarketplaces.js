@@ -59,7 +59,7 @@ const getRatingMarketplace = async (req, res) => {
 
 const getAllRatingMarketplace = async (req, res) => {
   try {
-    const { filter, sort, select } = req.query;
+    const { filter, sort, select, count, isTotal } = req.query;
     const {
       customer,
       marketplace,
@@ -84,7 +84,7 @@ const getAllRatingMarketplace = async (req, res) => {
     }
 
     if (rating) {
-      queryObject.rating = { $regex: rating, $options: "i" };
+      queryObject.rating = rating;
     }
 
     if (review) {
@@ -139,10 +139,27 @@ const getAllRatingMarketplace = async (req, res) => {
     let limit = Number(req.query.limit) || 25;
     let skip = (page - 1) * limit;
 
-    apiData = apiData.skip(skip).limit(limit).sort({ createAt: -1 });
+    if (count) {
+      const countQuery = {};
+      if (rating) {
+        countQuery.rating = rating;
+      }
+      if (review) {
+        countQuery.review = review;
+      }
 
-    const data = await apiData;
-    res.status(200).json({ count: data.length, data });
+      if (isTotal) {
+        apiData = apiData.estimatedDocumentCount(); //total
+      } else {
+        apiData = apiData.countDocuments(countQuery);
+      }
+      const data = await apiData;
+      res.status(200).json({ result: "success", data });
+    } else {
+      apiData = apiData.skip(skip).limit(limit).sort({ createAt: -1 });
+      const data = await apiData;
+      res.status(200).json({ count: data.length, data });
+    }
   } catch (e) {
     res.status(400).json(getErrorFromCatch(e));
   }

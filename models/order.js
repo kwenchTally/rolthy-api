@@ -47,6 +47,10 @@ const orderSchema = new mongoose.Schema({
     ref: "addresses",
     require: [true, "delivery address must be provided"],
   },
+  delivery_slot: {
+    type: String,
+    default: "10AM - 12PM",
+  },
   delivery_option: {
     type: String,
     default: "",

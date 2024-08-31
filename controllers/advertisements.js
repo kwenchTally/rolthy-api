@@ -56,6 +56,7 @@ const getAdvertisement = async (req, res) => {
 
 const getAllAdvertisement = async (req, res) => {
   try {
+    const { sort, select } = req.query;
     const {
       marketplace,
       product,
@@ -67,15 +68,36 @@ const getAllAdvertisement = async (req, res) => {
       deleted,
       end,
       start,
-      sort,
-      select,
-    } = req.query;
+      available,
+      viewedBy,
+      title,
+      body,
+      tag,
+    } = req.body;
     const queryObject = {};
 
     if (marketplace) {
+      queryObject.marketplace = { $eq: marketplace };
     }
 
     if (product) {
+      queryObject.product = { $eq: product };
+    }
+
+    if (viewedBy) {
+      queryObject.viewedBy = { $eq: viewedBy };
+    }
+
+    if (title) {
+      queryObject.title = title;
+    }
+
+    if (body) {
+      queryObject.body = body;
+    }
+
+    if (tag) {
+      queryObject.tag = tag;
     }
 
     if (reference) {
@@ -100,6 +122,10 @@ const getAllAdvertisement = async (req, res) => {
 
     if (deleted) {
       queryObject.deleted = deleted;
+    }
+
+    if (available) {
+      queryObject.available = available;
     }
 
     if (start) {
@@ -137,6 +163,19 @@ const getAllAdvertisement = async (req, res) => {
         });
       }
     }
+
+    apiData.populate([
+      { path: "product", model: "Product" },
+      {
+        path: "marketplace",
+        model: "MarketPlace",
+        populate: [
+          { path: "address", model: "Address" },
+          { path: "items", model: "Product" },
+        ],
+      },
+      { path: "viewedBy", model: "Customer" },
+    ]);
 
     let page = Number(req.query.page) || 1;
     let limit = Number(req.query.limit) || 25;

@@ -46,6 +46,18 @@ const driverSchema = new mongoose.Schema({
       ref: "documents",
     },
   ],
+  slots: {
+    type: Array,
+    default: [],
+  },
+  emergency: {
+    type: Array,
+    default: [],
+  },
+  vehicle: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "vehicles",
+  },
   verified: {
     type: String,
     enum: {
@@ -62,6 +74,11 @@ const driverSchema = new mongoose.Schema({
   preference: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "preferences",
+  },
+  sqReference: {
+    type: String,
+    required: false,
+    default: "",
   },
   active: {
     type: Boolean,

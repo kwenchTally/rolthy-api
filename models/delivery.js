@@ -35,10 +35,6 @@ const deliverySchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  // order_id: {
-  //   type: String,
-  //   default: "",
-  // },
   order: {
     type: Map,
     default: {
@@ -131,6 +127,29 @@ const deliverySchema = new mongoose.Schema({
       message: `{VALUE} is not supported`,
     },
     default: "Processing",
+  },
+  //10min from gmap
+  //before 10min, 10min, after 10min, after 20min
+  //Early, On Time, Late, Extremely Late
+  delivered: {
+    type: String,
+    enum: {
+      values: ["Early", "On Time", "Late", "Extremely Late"],
+      message: `{VALUE} is not supported`,
+    },
+    default: "On Time",
+  },
+  accepted: {
+    type: Boolean,
+    default: true,
+  },
+  completed: {
+    type: Boolean,
+    default: true,
+  },
+  violation: {
+    type: Boolean,
+    default: false,
   },
   active: {
     type: Boolean,

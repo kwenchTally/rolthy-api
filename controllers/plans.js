@@ -1,21 +1,59 @@
 const { getErrorFromCatch } = require("../helper/functions");
-const Product = require("../models/product");
+const Plan = require("../models/plan");
+const { newSubscriptionPlanVariationAPI } = require("../controllers/square");
 
-const addProduct = async (req, res) => {
+const addPlan = async (req, res) => {
   try {
-    cObj = new Product(req.body);
-    const result = await cObj.save();
-    res.status(200).json(result);
+    cObj = new Plan(req.body);
+    let result = await cObj.save();
+    result = await result.populate();
+
+    try {
+      const req1 = {
+        planId: req.body.sqStoreReference,
+        planVariation: {
+          name: cObj["name"],
+          frequency: [
+            {
+              name: cObj["billing"],
+              price: cObj["price"],
+              period: cObj["billingPeriod"],
+            },
+          ],
+        },
+      };
+      const res1 = await newSubscriptionPlanVariationAPI(req1);
+      if (res1 != null) {
+        const updateData = cObj;
+        updateData.sqPlanReference = res1.id;
+
+        const _id = cObj["_id"];
+        let data = await Plan.findByIdAndUpdate(_id, updateData, {
+          new: true,
+        });
+
+        if (data === null) {
+          return res.status(200).json({ error: "id not found" });
+        }
+        data = await data.populate();
+        return res.status(200).json(data);
+      } else {
+        console.log("plan not added");
+      }
+    } catch (e1) {
+      console.log(e1);
+      console.log("failed to plan");
+    }
   } catch (e) {
     console.log(e);
     res.status(400).json(getErrorFromCatch(e));
   }
 };
 
-const updateProduct = async (req, res) => {
+const updatePlan = async (req, res) => {
   try {
     const _id = req.params.id;
-    let data = await Product.findByIdAndUpdate(_id, req.body, { new: true });
+    let data = await Plan.findByIdAndUpdate(_id, req.body, { new: true });
     if (data === null) {
       return res.status(200).json({ error: "id not found" });
     }
@@ -25,10 +63,10 @@ const updateProduct = async (req, res) => {
   }
 };
 
-const deleteProduct = async (req, res) => {
+const deletePlan = async (req, res) => {
   try {
     const _id = req.params.id;
-    let data = await Product.findByIdAndDelete(_id);
+    let data = await Plan.findByIdAndDelete(_id);
     if (data === null) {
       return res.status(200).json({ error: "id not found" });
     }
@@ -38,10 +76,10 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-const getProduct = async (req, res) => {
+const getPlan = async (req, res) => {
   try {
     const _id = req.params.id;
-    let data = await Product.findById(_id).populate({
+    let data = await Plan.findById(_id).populate({
       path: "marketplace",
       model: "MarketPlace",
     });
@@ -54,25 +92,20 @@ const getProduct = async (req, res) => {
   }
 };
 
-const getAllProduct = async (req, res) => {
+const getAllPlan = async (req, res) => {
   try {
     const { sort, select, count, isTotal } = req.query;
     const {
       name,
       description,
-      category,
-      subcategory,
       price,
       marketplace,
-      quantity,
-      company,
+      billing,
       available,
       deleted,
       featured,
-      rating,
       discount,
       distinct,
-      type,
       items,
     } = req.body;
     const queryObject = {};
@@ -81,20 +114,12 @@ const getAllProduct = async (req, res) => {
       queryObject.name = { $regex: name, $options: "i" };
     }
 
-    if (category) {
-      queryObject.category = { $regex: category, $options: "i" };
-    }
-
-    if (subcategory) {
-      queryObject.subcategory = { $regex: subcategory, $options: "i" };
-    }
-
     if (price) {
       queryObject.price = price;
     }
 
-    if (company) {
-      queryObject.company = { $regex: company, $options: "i" };
+    if (billing) {
+      queryObject.billing = billing;
     }
 
     if (marketplace) {
@@ -109,26 +134,22 @@ const getAllProduct = async (req, res) => {
       queryObject.deleted = deleted;
     }
 
-    if (rating) {
-      queryObject.rating = rating;
-    }
-
     if (discount) {
       queryObject.discount = discount;
-    }
-
-    if (type) {
-      queryObject.type = type;
     }
 
     if (items) {
       queryObject.items = { $eq: items };
     }
 
-    let apiData = Product.find(queryObject).populate([
+    let apiData = Plan.find(queryObject).populate([
       {
         path: "marketplace",
         model: "MarketPlace",
+      },
+      {
+        path: "items",
+        model: "Product",
       },
     ]);
 
@@ -171,9 +192,9 @@ const getAllProduct = async (req, res) => {
 };
 
 module.exports = {
-  getAllProduct,
-  getProduct,
-  addProduct,
-  updateProduct,
-  deleteProduct,
+  getAllPlan,
+  getPlan,
+  addPlan,
+  updatePlan,
+  deletePlan,
 };

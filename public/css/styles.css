@@ -1,13 +1,23 @@
 body {
   font-family: Arial, sans-serif;
   background-color: #f4f4f4;
-  margin: 0;
+  /* background-color: white; */
+  /* margin: 0; */
+  /* margin: 0px 20px 0px 20px; */
+  /* margin: 0px 2rem 0px 2rem; */
+  /* margin: 0px 5rem 0px 5rem; */
+  /* margin: 0px 10% 0px 10%; */
+  /* margin: 0px 40% 0px 40%; */
+  margin: 0px 40% 0px 40%;
   padding: 0;
-  display: flex;
-  justify-content: center;
+  /* display: flex; */
+  display: inherit;
+  /* justify-content: center; */
   align-items: center;
   height: 100vh;
   flex-direction: column;
+  overflow-y: auto; /* Enable vertical scrolling */
+  overflow-x: hidden; /* Disable horizontal scrolling */
 }
 
 .modal {
@@ -458,4 +468,46 @@ body {
 
 .m1020 {
   margin: 10px 20px;
+}
+
+@media screen and (max-width: 768px) {
+  body {
+    margin: 0px 10% 0px 10%;
+  }
+
+  .modal-content {
+    width: 95%;
+    padding: 15px;
+  }
+
+  .button {
+    font-size: 13px;
+    padding: 8px 16px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  body {
+    margin: 0px 10% 0px 10%;
+  }
+
+  .modal-content {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .close {
+    font-size: 24px;
+  }
+
+  .button {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+}
+
+@media (-webkit-max-device-pixel-ratio: 1) {
+  * {
+    image-rendering: pixelated;
+  }
 }

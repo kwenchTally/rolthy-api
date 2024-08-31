@@ -70,6 +70,9 @@ const ratingproducts_routes = require("./routes/ratingproducts");
 const notifications_routes = require("./routes/notifications");
 const deliveries_routes = require("./routes/deliveries");
 const preferences_routes = require("./routes/preferences");
+const statements_routes = require("./routes/statements");
+const plans_routes = require("./routes/plans");
+const vehicles_routes = require("./routes/vehicles");
 
 // const stripe_routes = require("./routes/stripepayment");
 const square_routes = require("./routes/squarepayment");
@@ -100,6 +103,9 @@ app.use("/api/rating/products", ratingproducts_routes);
 app.use("/api/notifications", notifications_routes);
 app.use("/api/deliveries", deliveries_routes);
 app.use("/api/preferences", preferences_routes);
+app.use("/api/statements", statements_routes);
+app.use("/api/plans", plans_routes);
+app.use("/api/vehicles", vehicles_routes);
 
 // app.use("/api/payment", stripe_routes);
 app.use("/api/payment", square_routes);

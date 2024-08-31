@@ -16,6 +16,7 @@ const {
   upload_product,
   upload_document,
   upload_delivery,
+  upload_plan,
   viewBucket,
 } = require("../controllers/uploader");
 
@@ -111,6 +112,18 @@ router.post("/document", (req, res, next) => {
 
 router.post("/delivery", (req, res, next) => {
   upload_delivery(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).send({ message: err.message });
+    } else if (err) {
+      console.log(err);
+      return res.status(400).send({ message: err.message });
+    }
+    uploadBucket(req, res);
+  });
+});
+
+router.post("/plan", (req, res, next) => {
+  upload_plan(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       return res.status(400).send({ message: err.message });
     } else if (err) {

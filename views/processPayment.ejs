@@ -3,6 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
   <script src="<%= isProduction ? 'https://web.squarecdn.com/v1/square.js' : 'https://sandbox.web.squarecdn.com/v1/square.js' %>"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -291,8 +292,11 @@
               , note: note || ""
             , })
 
+            //"/api/payment/process/get"
             response = await fetch(
-              'process-payment', {
+              //'process-payment', 
+              window.location.href.split("process/get")[0]
+              .concat('process-payment'), {
                 method: 'POST'
                 , headers: {
                   'Content-Type': 'application/json'
@@ -332,6 +336,34 @@
             resultText.innerHTML = '<i class="fas fa-times cross-icon"></i> Payment Failed!';
             resultText.className = "progress-text failed";
           }
+
+          const resUrl = window.location.href.split("process/get")[0]
+            .concat('result')
+
+          const result1 = result.success ? {
+            success: true
+            , result: {
+              paymentId: result.payment.id
+              , orderId: result.payment.orderId
+              , customerId: result.payment.customerId
+            }
+          } : result1 = {
+            success: false
+            , result: {}
+          }
+
+          const jsonString = JSON.stringify(result1);
+          const encodedData = btoa(jsonString);
+          const fullUrl = `${resUrl}?res=${encodedData}`;
+
+          setTimeout(() => {
+            //document.body.classList.add('fade-out');
+            document.body.style.backgroundColor = 'white';
+            document.body.style.color = 'black';
+            document.body.style.fontFamily = 'monospace';
+
+            window.location.href = fullUrl;
+          }, 1000);
 
         } catch (error) {
           progressText.innerText = 'Payment failed: ' + error.message;

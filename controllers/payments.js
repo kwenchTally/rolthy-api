@@ -538,7 +538,7 @@ const getPayment = async (req, res) => {
 
 const getAllPayment = async (req, res) => {
   try {
-    const { sort, select } = req.query;
+    const { sort, select, count, isTotal } = req.query;
     const {
       id,
       reference,
@@ -633,10 +633,20 @@ const getAllPayment = async (req, res) => {
     let limit = Number(req.query.limit) || 25;
     let skip = (page - 1) * limit;
 
-    apiData = apiData.skip(skip).limit(limit);
-
-    const data = await apiData;
-    res.status(200).json({ count: data.length, data });
+    if (count) {
+      if (isTotal) {
+        apiData = apiData.estimatedDocumentCount(); //total
+      } else {
+        apiData = apiData.countDocuments(queryObject);
+      }
+      const data = await apiData;
+      res.status(200).json({ result: "success", data });
+    } else {
+      // apiData = apiData.skip(skip).limit(limit).sort({ createAt: 1 });
+      apiData = apiData.skip(skip).limit(limit).sort({ createAt: -1 });
+      const data = await apiData;
+      res.status(200).json({ count: data.length, data });
+    }
   } catch (e) {
     res.status(400).json(getErrorFromCatch(e));
   }

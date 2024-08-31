@@ -1,9 +1,9 @@
 const { getErrorFromCatch } = require("../helper/functions");
-const RatingProduct = require("../models/ratingproduct");
+const Statement = require("../models/statement");
 
-const addRatingProduct = async (req, res) => {
+const addStatement = async (req, res) => {
   try {
-    cObj = new RatingProduct(req.body);
+    cObj = new Statement(req.body);
     const result = await cObj.save();
     res.status(200).json(result);
   } catch (e) {
@@ -11,12 +11,45 @@ const addRatingProduct = async (req, res) => {
   }
 };
 
-const updateRatingProduct = async (req, res) => {
+const updateStatement = async (req, res) => {
+  try {
+    if (req.body.statements) {
+      let data = await Statement.bulkWrite(
+        req.body.Statements.map((statement) => ({
+          updateOne: {
+            filter: {
+              _id: Statement._id,
+              customer: Statement.customer,
+              removed: false,
+            },
+            update: { $set: Statement },
+          },
+        }))
+      );
+
+      if (data === null) {
+        return res.status(200).json({ error: "id not found" });
+      }
+      res.status(200).json(data);
+    } else {
+      const _id = req.params.id;
+      let data = await Statement.findByIdAndUpdate(_id, req.body, {
+        new: true,
+      });
+      if (data === null) {
+        return res.status(200).json({ error: "id not found" });
+      }
+      res.status(200).json(data);
+    }
+  } catch (e) {
+    res.status(400).json(getErrorFromCatch(e));
+  }
+};
+
+const deleteStatement = async (req, res) => {
   try {
     const _id = req.params.id;
-    let data = await RatingProduct.findByIdAndUpdate(_id, req.body, {
-      new: true,
-    });
+    let data = await Statement.findByIdAndDelete(_id);
     if (data === null) {
       return res.status(200).json({ error: "id not found" });
     }
@@ -26,26 +59,11 @@ const updateRatingProduct = async (req, res) => {
   }
 };
 
-const deleteRatingProduct = async (req, res) => {
+const getStatement = async (req, res) => {
   try {
     const _id = req.params.id;
-    let data = await RatingProduct.findByIdAndDelete(_id);
-    if (data === null) {
-      return res.status(200).json({ error: "id not found" });
-    }
-    res.status(200).json(data);
-  } catch (e) {
-    res.status(400).json(getErrorFromCatch(e));
-  }
-};
-
-const getRatingProduct = async (req, res) => {
-  try {
-    const _id = req.params.id;
-    let data = await RatingProduct.findById(_id)
-      .populate({ path: "delivery_address", model: "Address" })
+    let data = await Statement.findById(_id)
       .populate({ path: "customer", model: "Customer" })
-      .populate({ path: "driver", model: "Driver" })
       .populate({ path: "marketplace", model: "MarketPlace" })
       .populate({ path: "product", model: "Product" });
     if (data === null) {
@@ -57,39 +75,55 @@ const getRatingProduct = async (req, res) => {
   }
 };
 
-const getAllRatingProduct = async (req, res) => {
+const getAllStatement = async (req, res) => {
   try {
-    const { filter, sort, select, count, isTotal } = req.query;
+    const { filter, sort, select } = req.query;
     const {
       customer,
-      product,
       marketplace,
       driver,
-      rating,
-      review,
+      reference,
+      amount,
+      name,
+      note,
+      status,
       active,
       deleted,
-      date,
+      createAt,
     } = req.body;
+
     const queryObject = {};
 
     if (customer) {
-      queryObject.customer = { $eq: customer };
+      queryObject.customer = customer;
     }
 
-    if (product) {
-      queryObject.product = { $eq: product };
+    if (marketplace) {
+      queryObject.marketplace = marketplace;
     }
 
-    if (filter) {
+    if (driver) {
+      queryObject.driver = driver;
     }
 
-    if (rating) {
-      queryObject.rating = rating;
+    if (reference) {
+      queryObject.reference = reference;
     }
 
-    if (review) {
-      queryObject.review = { $regex: review, $options: "i" };
+    if (amount) {
+      queryObject.amount = amount;
+    }
+
+    if (name) {
+      queryObject.name = { $regex: name, $options: "i" };
+    }
+
+    if (note) {
+      queryObject.note = { $regex: note, $options: "i" };
+    }
+
+    if (status) {
+      queryObject.status = status;
     }
 
     if (active) {
@@ -100,11 +134,10 @@ const getAllRatingProduct = async (req, res) => {
       queryObject.deleted = deleted;
     }
 
-    if (date) {
-      queryObject.createAt = { $regex: date, $options: "i" };
+    if (createAt) {
     }
 
-    let apiData = RatingProduct.find(queryObject);
+    let apiData = Statement.find(queryObject);
 
     if (sort) {
       let sortFix = sort.replace(",", " ");
@@ -119,7 +152,7 @@ const getAllRatingProduct = async (req, res) => {
 
       if (selectFix.includes("product")) {
         apiData = apiData.populate({
-          path: "product",
+          path: "products",
           model: "Product",
           populate: {
             path: "marketplace",
@@ -128,7 +161,6 @@ const getAllRatingProduct = async (req, res) => {
           },
         });
       }
-
       if (selectFix.includes("customer")) {
         let filter = {};
         apiData = apiData.populate({
@@ -138,43 +170,29 @@ const getAllRatingProduct = async (req, res) => {
           populate: { path: "address", model: "Address" },
         });
       }
+      if (selectFix.includes("marketplace")) {
+      }
     }
+
+    apiData.populate([]);
 
     let page = Number(req.query.page) || 1;
     let limit = Number(req.query.limit) || 25;
     let skip = (page - 1) * limit;
 
-    if (count) {
-      const countQuery = {};
-      if (rating) {
-        countQuery.rating = rating;
-      }
-      if (review) {
-        countQuery.review = review;
-      }
+    apiData = apiData.skip(skip).limit(limit).sort({ createAt: 1 });
 
-      if (isTotal) {
-        apiData = apiData.estimatedDocumentCount(); //total
-      } else {
-        apiData = apiData.countDocuments(countQuery);
-      }
-      const data = await apiData;
-      res.status(200).json({ result: "success", data });
-    } else {
-      // apiData = apiData.skip(skip).limit(limit);
-      apiData = apiData.skip(skip).limit(limit).sort({ createAt: -1 });
-      const data = await apiData;
-      res.status(200).json({ count: data.length, data });
-    }
+    const data = await apiData;
+    res.status(200).json({ count: data.length, data });
   } catch (e) {
     res.status(400).json(getErrorFromCatch(e));
   }
 };
 
 module.exports = {
-  getAllRatingProduct,
-  getRatingProduct,
-  addRatingProduct,
-  updateRatingProduct,
-  deleteRatingProduct,
+  getAllStatement,
+  getStatement,
+  addStatement,
+  updateStatement,
+  deleteStatement,
 };

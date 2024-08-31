@@ -1,6 +1,7 @@
 const { getErrorFromCatch } = require("../helper/functions");
 const Customer = require("../models/customer");
 const Address = require("../models/address");
+const { createCustomerForAPI } = require("../controllers/square");
 
 const addCustomer = async (req, res) => {
   try {
@@ -35,8 +36,50 @@ const addCustomer = async (req, res) => {
     cObj = new Customer(req.body);
     let result = await cObj.save();
     result = await result.populate({ path: "address", model: "Address" });
+
+    try {
+      const req1 = {
+        firstname: cObj["firstname"],
+        lastname: cObj["lastname"],
+        company_name: "",
+        email: cObj["email"],
+        phone: cObj["mobile"],
+        // note: "Customer",
+        note: `customer/${cObj["_id"]}`,
+        // "address": {
+        //   "street": "500 Electric Ave",
+        //   "appartment": "Suite 600",
+        //   "city": "New York",
+        //   "state": "NY",
+        //   "zipcode": "10003",
+        //   "country": "US"
+        // }
+      };
+      const res1 = await createCustomerForAPI(req1);
+      if (res1 != null) {
+        const updateData = cObj;
+        updateData.sqReference = res1.customer.id;
+
+        const _id = cObj["_id"];
+        let data = await Customer.findByIdAndUpdate(_id, updateData, {
+          new: true,
+        });
+
+        if (data === null) {
+          return res.status(200).json({ error: "id not found" });
+        }
+        data = await data.populate({ path: "address", model: "Address" });
+        return res.status(200).json(data);
+      } else {
+        console.log("customer not added");
+      }
+    } catch (e1) {
+      console.log(e1);
+      console.log("failed to customer");
+    }
     return res.status(200).json(result);
   } catch (e) {
+    console.log(e);
     return res.status(400).json(getErrorFromCatch(e));
   }
 };
@@ -87,6 +130,7 @@ const getCustomer = async (req, res) => {
 
 const getAllCustomer = async (req, res) => {
   try {
+    const { sort, select, count, isTotal } = req.query;
     const {
       token,
       firstname,
@@ -97,8 +141,6 @@ const getAllCustomer = async (req, res) => {
       address,
       active,
       deleted,
-      sort,
-      select,
     } = req.body;
     const queryObject = {};
 
@@ -172,10 +214,21 @@ const getAllCustomer = async (req, res) => {
     let limit = Number(req.query.limit) || 25;
     let skip = (page - 1) * limit;
 
-    apiData = apiData.skip(skip).limit(limit);
-
-    const data = await apiData;
-    res.status(200).json({ count: data.length, data });
+    if (count) {
+      if (isTotal) {
+        apiData = apiData.estimatedDocumentCount(); //total
+      } else {
+        apiData = apiData.countDocuments(queryObject);
+      }
+      const data = await apiData;
+      res.status(200).json({ result: "success", data });
+    } else {
+      // apiData = apiData.skip(skip).limit(limit);
+      // apiData = apiData.skip(skip).limit(limit).sort({ createAt: 1 });
+      apiData = apiData.skip(skip).limit(limit).sort({ createAt: -1 });
+      const data = await apiData;
+      res.status(200).json({ count: data.length, data });
+    }
   } catch (e) {
     res.status(400).json(getErrorFromCatch(e));
   }
@@ -183,6 +236,7 @@ const getAllCustomer = async (req, res) => {
 
 const findNearByMeCustomer = async (req, res) => {
   try {
+    const { sort, select, count, isTotal } = req.query;
     const {
       firstname,
       lastname,
@@ -192,8 +246,6 @@ const findNearByMeCustomer = async (req, res) => {
       address,
       active,
       deleted,
-      sort,
-      select,
       longitude,
       latitude,
       radius,
@@ -260,10 +312,20 @@ const findNearByMeCustomer = async (req, res) => {
     let limit = Number(req.query.limit) || 25;
     let skip = (page - 1) * limit;
 
-    apiData = apiData.skip(skip).limit(limit);
-
-    const data = await apiData;
-    res.status(200).json({ count: data.length, data });
+    if (count) {
+      if (isTotal) {
+        apiData = apiData.estimatedDocumentCount(); //total
+      } else {
+        apiData = apiData.countDocuments(queryObject);
+      }
+      const data = await apiData;
+      res.status(200).json({ result: "success", data });
+    } else {
+      // apiData = apiData.skip(skip).limit(limit).sort({ createAt: 1 });
+      apiData = apiData.skip(skip).limit(limit).sort({ createAt: -1 });
+      const data = await apiData;
+      res.status(200).json({ count: data.length, data });
+    }
   } catch (e) {
     res.status(400).json(getErrorFromCatch(e));
   }

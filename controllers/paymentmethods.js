@@ -77,11 +77,11 @@ const getAllPaymentMethod = async (req, res) => {
     }
 
     if (marketplace) {
-      queryObject.marketplace = { $regex: marketplace, $options: "i" };
+      queryObject.marketplace = { $eq: marketplace };
     }
 
     if (driver) {
-      queryObject.driver = { $regex: driver, $options: "i" };
+      queryObject.driver = { $eq: driver };
     }
 
     if (method) {

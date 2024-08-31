@@ -8,13 +8,20 @@ const advertisementSchema = new mongoose.Schema({
   marketplace: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "marketplaces",
-    require: [true, "marketplace must be provided"],
+    default: null,
   },
   product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "products",
-    require: [true, "product must be provided"],
+    default: null,
   },
+  viewedBy: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "customers",
+      default: null,
+    },
+  ],
   reference: {
     type: String,
     default: "",
@@ -23,19 +30,35 @@ const advertisementSchema = new mongoose.Schema({
     type: Number,
     default: 0.0,
   },
+  title: {
+    type: String,
+    default: "",
+  },
+  body: {
+    type: String,
+    default: "",
+  },
   description: {
     type: String,
     default: "",
   },
+  tag: {
+    type: String,
+    default: "none",
+  },
   category: {
     type: String,
     enum: {
-      values: ["None", "Offer", "Promotion", "Sponsered", "Advertise"],
+      values: ["none", "offer", "promotion", "sponsered", "advertise"],
       message: `{VALUE} is not supported`,
     },
-    default: "None",
+    default: "none",
   },
   show: {
+    type: Boolean,
+    default: true,
+  },
+  available: {
     type: Boolean,
     default: true,
   },

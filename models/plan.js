@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const productSchema = new mongoose.Schema({
+const planSchema = new mongoose.Schema({
   pic: {
     type: String,
     required: false,
@@ -14,56 +14,40 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  category: {
+  billing: {
     type: String,
     default: "",
   },
-  subcategory: {
-    type: String,
-    default: "",
+  billingPeriod: {
+    type: Number,
+    default: 1,
   },
   price: {
     type: Number,
     default: 0.0,
-  },
-  quantity: {
-    type: Number,
-    default: 1,
-  },
-  company: {
-    type: String,
-    default: "",
   },
   marketplace: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "marketplaces",
     require: [true, "marketplace must be provided"],
   },
-  rating: {
-    type: Number,
-    default: 0.0,
-  },
-  discount: {
-    type: Number,
-    default: 0.0,
-  },
-  tax: {
-    type: Number,
-    default: 0.0,
-  },
-  shipping: {
-    type: Number,
-    default: 0.0,
-  },
-  type: {
+  sqPlanReference: {
     type: String,
-    default: "Item",
+    required: false,
+    default: "",
   },
-  items: {
-    type: Array,
-    default: [],
-  },
+  items: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "products",
+      require: [true, "marketplace must be provided"],
+    },
+  ],
   available: {
+    type: Boolean,
+    default: true,
+  },
+  active: {
     type: Boolean,
     default: true,
   },
@@ -77,4 +61,4 @@ const productSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Product", productSchema);
+module.exports = mongoose.model("Plan", planSchema);

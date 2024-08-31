@@ -1488,12 +1488,7 @@ newSubscription = async (req, res) => {
         response.success = true;
 
         return res.status(200).json(response);
-        // return res.status(200).json({
-        //   success: true,
-        //   response
-        // });
       } catch (e) {
-        // return res.status(200).json(e.result);
         return res.status(200).json({
           success: false,
           result: e.result,
@@ -1573,6 +1568,276 @@ function serializeBigInt(obj) {
   );
 }
 
+//create customer
+createCustomerForAPI = async (body) => {
+  try {
+    const { firstname, lastname, email, address, phone, note } = body;
+    const referenceId = nanoid();
+
+    const data = {
+      givenName: firstname,
+      familyName: lastname,
+      emailAddress: email,
+      phoneNumber: phone,
+      referenceId: referenceId,
+      note: note,
+    };
+
+    if (data.address) {
+      data.address = {
+        addressLine1: address.street,
+        addressLine2: address.appartment,
+        locality: address.city,
+        administrativeDistrictLevel1: address.state,
+        postalCode: address.zipcode,
+        country: address.country,
+      };
+    }
+
+    const response = await client.customersApi.createCustomer(data);
+    return JSON.parse(response.body);
+  } catch (error) {
+    console.log(error);
+    try {
+      err = JSON.parse(error.body.replaceAll()).errors;
+      console.log(err);
+    } catch (e) {
+      console.log(e);
+    }
+    return null;
+  }
+};
+newSubscriptionPlanAPI = async (body) => {
+  try {
+    const { plan, planId } = body;
+    const idempotencyKey = crypto.randomUUID();
+
+    let version;
+    if (planId) {
+      const existingPlan = await getSubscriptionPlan(planId);
+      version = existingPlan.version;
+    }
+
+    let response;
+    const catalogApi = client.catalogApi;
+
+    let query;
+    if (planId) {
+      query = {
+        idempotencyKey: idempotencyKey,
+        object: {
+          type: "SUBSCRIPTION_PLAN",
+          id: planId,
+          subscriptionPlanData: {
+            name: plan.name,
+            phases: plan.frequency.map((e) => {
+              return {
+                cadence: e.name.toUpperCase(),
+                pricing: {
+                  type: "STATIC",
+                  priceMoney: {
+                    amount: e.price * 100,
+                    currency: "USD",
+                  },
+                },
+                ordinal: 1,
+              };
+            }),
+          },
+        },
+      };
+    } else {
+      query = {
+        idempotencyKey: idempotencyKey,
+        object: {
+          type: "SUBSCRIPTION_PLAN",
+          id: "#newSubscriptionPlan",
+          subscriptionPlanData: {
+            name: plan.name,
+          },
+        },
+      };
+    }
+
+    try {
+      response = await catalogApi.upsertCatalogObject(query);
+      response = JSON.parse(serializeBigInt(response.result)) || {};
+      response = response.catalogObject;
+      return response;
+    } catch (e) {
+      return null;
+    }
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+newSubscriptionPlanVariationAPI = async (body) => {
+  try {
+    const { planVariation, planId, planVariationId } = body;
+    const idempotencyKey = crypto.randomUUID();
+
+    let version;
+    if (planVariationId) {
+      const existingPlan = await getSubscriptionPlan(planVariationId);
+      version = existingPlan.version;
+    }
+
+    let response;
+    const catalogApi = client.catalogApi;
+
+    let query;
+    if (planVariationId) {
+      query = {
+        idempotencyKey: idempotencyKey,
+        object: {
+          type: "SUBSCRIPTION_PLAN_VARIATION",
+          id: planVariationId,
+          subscriptionPlanVariationData: {
+            name: planVariation.name,
+            phases: planVariation.frequency.map((e) => {
+              return {
+                cadence: e.name.toUpperCase(),
+                pricing: {
+                  type: "STATIC",
+                  priceMoney: {
+                    amount: e.price * 100,
+                    currency: "USD",
+                  },
+                },
+                periods: e.period,
+              };
+            }),
+          },
+        },
+      };
+    } else {
+      query = {
+        idempotencyKey: idempotencyKey,
+        object: {
+          type: "SUBSCRIPTION_PLAN_VARIATION",
+          id: "#newSubscriptionPlanVariation",
+          subscriptionPlanVariationData: {
+            name: planVariation.name,
+            subscriptionPlanId: planId,
+            phases: planVariation.frequency.map((e) => {
+              return {
+                cadence: e.name.toUpperCase(),
+                pricing: {
+                  type: "STATIC",
+                  priceMoney: {
+                    amount: e.price * 100,
+                    currency: "USD",
+                  },
+                },
+                periods: e.period,
+              };
+            }),
+          },
+        },
+      };
+    }
+
+    try {
+      response = await catalogApi.upsertCatalogObject(query);
+      response = JSON.parse(serializeBigInt(response.result)) || {};
+      response = response.catalogObject;
+      return response;
+    } catch (e) {
+      return null;
+    }
+  } catch (error) {
+    console.error(error.result);
+    return null;
+  }
+};
+newSubscriptionAPI = async (body) => {
+  try {
+    const {
+      subscriptionId,
+      planId,
+      planVariationId,
+      customerId,
+      cardId,
+      notes,
+      price,
+    } = body;
+
+    const idempotencyKey = new Date().getTime().toString();
+    let version;
+    if (subscriptionId) {
+      const existingPlan = await getSubscriptionPlan(subscriptionId);
+      version = existingPlan.version;
+    }
+
+    let response;
+    let query;
+    if (subscriptionId) {
+      query = {
+        idempotencyKey: idempotencyKey,
+        object: {
+          type: "SUBSCRIPTION_PLAN",
+          id: subscriptionId,
+          subscriptionPlanData: {
+            name: plan.name,
+            phases: plan.frequency.map((e) => {
+              return {
+                cadence: e.name.toUpperCase(),
+                pricing: {
+                  type: "STATIC",
+                  priceMoney: {
+                    amount: e.price * 100,
+                    currency: "USD",
+                  },
+                },
+                ordinal: 1,
+              };
+            }),
+          },
+        },
+      };
+    } else {
+      query = {
+        idempotencyKey: idempotencyKey,
+        locationId: locationId,
+        planVariationId: planVariationId,
+        customerId: customerId,
+        cardId: cardId,
+        note: notes,
+        source: {
+          name: process.env.APP_NAME || "Habitoza",
+        },
+      };
+
+      if (price) {
+        query.priceOverrideMoney = {
+          amount: price * 100,
+          currency: "USD",
+        };
+      }
+    }
+
+    try {
+      response = await client.subscriptionsApi.createSubscription(query);
+      response = JSON.parse(serializeBigInt(response.result)) || {};
+      response.success = true;
+      return response;
+    } catch (e) {
+      return null;
+    }
+  } catch (error) {
+    return null;
+  }
+};
+
+returnResult = async (req, res) => {
+  const decodedData = atob(req.query.res);
+  const json = JSON.parse(decodedData);
+  return res.status(200).json({
+    result: json,
+  });
+};
+
 module.exports = {
   getLocations,
   getPayments,
@@ -1617,4 +1882,11 @@ module.exports = {
 
   attachCard,
   disableCard,
+
+  createCustomerForAPI,
+  newSubscriptionPlanAPI,
+  newSubscriptionPlanVariationAPI,
+  newSubscriptionAPI,
+
+  returnResult,
 };

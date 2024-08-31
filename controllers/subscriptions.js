@@ -1,5 +1,6 @@
 const { getErrorFromCatch } = require("../helper/functions");
 const Subscription = require("../models/subscription");
+const { newSubscriptionAPI } = require("../controllers/square");
 
 const addSubscription = async (req, res) => {
   try {
@@ -20,8 +21,41 @@ const addSubscription = async (req, res) => {
       },
       { path: "items", model: "Product" },
       { path: "payment", model: "Payment" },
+      {
+        path: "planId",
+        model: "Plan",
+        populate: [{ path: "items", model: "Product" }],
+      },
     ]);
-    res.status(200).json(result);
+
+    try {
+      const req1 = {
+        planId: cObj["marketplace"]["sqStoreReference"],
+        planVariationId: cObj["planId"]["sqPlanReference"],
+        customerId: cObj["customer"]["sqReference"],
+      };
+      const res1 = await newSubscriptionAPI(req1);
+      if (res1 != null) {
+        const updateData = cObj;
+        updateData.sqSubscriptionReference = res1.subscription.id;
+
+        const _id = cObj["_id"];
+        let data = await Subscription.findByIdAndUpdate(_id, updateData, {
+          new: true,
+        });
+
+        if (data === null) {
+          return res.status(200).json({ error: "id not found" });
+        }
+        data = await data.populate();
+        return res.status(200).json(data);
+      } else {
+        console.log("plan not added");
+      }
+    } catch (e1) {
+      console.log(e1);
+      console.log("failed to plan");
+    }
   } catch (e) {
     res.status(400).json(getErrorFromCatch(e));
   }
@@ -90,7 +124,7 @@ const getSubscription = async (req, res) => {
 
 const getAllSubscription = async (req, res) => {
   try {
-    const { sort, select } = req.query;
+    const { sort, select, count, isTotal } = req.query;
     const {
       id,
       customer,
@@ -111,19 +145,19 @@ const getAllSubscription = async (req, res) => {
     }
 
     if (customer) {
-      queryObject.customer = { $eq: customer };
+      queryObject.customer = customer;
     }
 
     if (marketplace) {
-      queryObject.marketplace = { $regex: marketplace, $options: "i" };
+      queryObject.marketplace = marketplace;
     }
 
     if (driver) {
-      queryObject.driver = { $regex: driver, $options: "i" };
+      queryObject.driver = driver;
     }
 
     if (payment) {
-      queryObject.payment = { $regex: payment, $options: "i" };
+      queryObject.payment = payment;
     }
 
     if (totalprice) {
@@ -183,7 +217,11 @@ const getAllSubscription = async (req, res) => {
       }
 
       if (selectFix.includes("payment")) {
-        apiData.populate({ path: "payment", model: "Payment", populate: [] });
+        apiData.populate({
+          path: "payment",
+          model: "Payment",
+          populate: [{ path: "orders", model: "Order" }],
+        });
       }
 
       if (selectFix.includes("items")) {
@@ -205,17 +243,45 @@ const getAllSubscription = async (req, res) => {
         populate: [{ path: "address", model: "Address" }],
       },
       { path: "items", model: "Product" },
-      { path: "payment", model: "Payment" },
+      {
+        path: "payment",
+        model: "Payment",
+        populate: [
+          {
+            path: "orders",
+            model: "Order",
+            populate: [
+              { path: "item", model: "Product" },
+              { path: "delivery_address", model: "Address" },
+            ],
+          },
+        ],
+      },
+      {
+        path: "planId",
+        model: "Plan",
+        populate: [{ path: "items", model: "Product" }],
+      },
     ]);
 
     let page = Number(req.query.page) || 1;
     let limit = Number(req.query.limit) || 25;
     let skip = (page - 1) * limit;
 
-    apiData = apiData.skip(skip).limit(limit);
-
-    const data = await apiData;
-    res.status(200).json({ count: data.length, data });
+    if (count) {
+      if (isTotal) {
+        apiData = apiData.estimatedDocumentCount(); //total
+      } else {
+        apiData = apiData.countDocuments(queryObject);
+      }
+      const data = await apiData;
+      res.status(200).json({ result: "success", data });
+    } else {
+      // apiData = apiData.skip(skip).limit(limit).sort({ createAt: 1 });
+      apiData = apiData.skip(skip).limit(limit).sort({ createAt: -1 });
+      const data = await apiData;
+      res.status(200).json({ count: data.length, data });
+    }
   } catch (e) {
     res.status(400).json(getErrorFromCatch(e));
   }
